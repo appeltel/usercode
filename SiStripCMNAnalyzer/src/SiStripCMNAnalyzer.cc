@@ -51,6 +51,10 @@
 #include "DataFormats/SiStripDetId/interface/TIDDetId.h"
 #include "DataFormats/SiStripDetId/interface/TOBDetId.h"
 
+#include "FWCore/Utilities/interface/RandomNumberGenerator.h"
+#include "CLHEP/Random/RandGaussQ.h"
+#include "SimGeneral/NoiseGenerators/interface/GaussianTailNoiseGenerator.h"
+#include "CLHEP/Random/RandomEngine.h"
 
 
 #include <TH1.h>
@@ -84,16 +88,31 @@ class SiStripCMNAnalyzer : public edm::EDAnalyzer {
       std::auto_ptr<SiStripRawProcessingAlgorithms> algorithms;
       edm::InputTag inputTag;
 
+      CLHEP::HepRandomEngine* rndEngine;
+      CLHEP::RandGaussQ* gaussDistribution;
+      GaussianTailNoiseGenerator* genNoise;
+
+
+      float cmnTIBRMS_;
+      float cmnTOBRMS_;
+      float cmnTIDRMS_;
+      float cmnTECRMS_;
+
+
       TH1F* allMedians_;
       TH1F* all25ths_;
       TH1F* TIBMedians_;
       TH1F* TIB25ths_;
+      TH1F* TIBGens_;
       TH1F* TOBMedians_;
       TH1F* TOB25ths_;
+      TH1F* TOBGens_;
       TH1F* TIDMedians_;
       TH1F* TID25ths_;
+      TH1F* TIDGens_;
       TH1F* TECMedians_;
       TH1F* TEC25ths_;
+      TH1F* TECGens_;
       TH2F* medvs25_;
 
       // These are displays of ten interesting APV25s, with the median and 25th in the 129th and 130th points.
@@ -123,17 +142,25 @@ SiStripCMNAnalyzer::SiStripCMNAnalyzer(const edm::ParameterSet& iConfig)
 {
 
   edm::Service<TFileService> fs;
-  allMedians_=fs->make<TH1F>("allMedians","Median ADC count of APV25", 100, 0., 500.);
-  all25ths_=fs->make<TH1F>("all25ths","25th percentile ADC count of APV25", 100, 0., 500.);
-  TIBMedians_=fs->make<TH1F>("TIBMedians","Median ADC count of APV25 for the TIB", 100, 0., 500.);
-  TIB25ths_=fs->make<TH1F>("TIB25ths","25th percentile ADC count of APV25 for the TIB", 100, 0., 500.);
-  TOBMedians_=fs->make<TH1F>("TOBMedians","Median ADC count of APV25 for the TOB", 100, 0., 500.);
-  TOB25ths_=fs->make<TH1F>("TOB25ths","25th percentile ADC count of APV25 for the TOB", 100, 0., 500.);
-  TIDMedians_=fs->make<TH1F>("TIDMedians","Median ADC count of APV25 for the TID", 100, 0., 500.);
-  TID25ths_=fs->make<TH1F>("TID25ths","25th percentile ADC count of APV25 for the TID", 100, 0., 500.);
-  TECMedians_=fs->make<TH1F>("TECMedians","Median ADC count of APV25 for the TEC", 100, 0., 500.);
-  TEC25ths_=fs->make<TH1F>("TEC25ths","25th percentile ADC count of APV25 for the TEC", 100, 0., 500.);
-  medvs25_=fs->make<TH2F>("medvs25","Median ADC count versus 25th percentile",50,0.,500.,50,0.,500.);
+  allMedians_=fs->make<TH1F>("allMedians","Median ADC count of APV25", 500, 0., 200.);
+  all25ths_=fs->make<TH1F>("all25ths","25th percentile ADC count of APV25", 500, 0., 200.);
+  medvs25_=fs->make<TH2F>("medvs25","Median ADC count versus 25th percentile",500,0.,500.,500,0.,200.);
+
+  TIBMedians_=fs->make<TH1F>("TIBMedians","Median ADC count of APV25 for the TIB", 500, 0., 200.);
+  TIB25ths_=fs->make<TH1F>("TIB25ths","25th percentile ADC count of APV25 for the TIB", 500, 0., 200.);
+  TIBGens_=fs->make<TH1F>("TIBGens","Expected CMN Distribution for the TIB", 500, 0., 200.);
+
+  TOBMedians_=fs->make<TH1F>("TOBMedians","Median ADC count of APV25 for the TOB", 500, 0., 200.);
+  TOB25ths_=fs->make<TH1F>("TOB25ths","25th percentile ADC count of APV25 for the TOB", 500, 0., 200.);
+  TOBGens_=fs->make<TH1F>("TOBGens","Expected CMN Distribution for the TOB", 500, 0., 200.);
+
+  TIDMedians_=fs->make<TH1F>("TIDMedians","Median ADC count of APV25 for the TID", 500, 0., 200.);
+  TID25ths_=fs->make<TH1F>("TID25ths","25th percentile ADC count of APV25 for the TID", 500, 0., 200.);
+  TIDGens_=fs->make<TH1F>("TIDGens","Expected CMN Distribution for the TID", 500, 0., 200.);
+
+  TECMedians_=fs->make<TH1F>("TECMedians","Median ADC count of APV25 for the TEC", 500, 0., 200.);
+  TEC25ths_=fs->make<TH1F>("TEC25ths","25th percentile ADC count of APV25 for the TEC", 500, 0., 200.);
+  TECGens_=fs->make<TH1F>("TECGens","Expected CMN Distribution for the TEC", 500, 0., 200.);
 
   for( int i = 0; i<10; i++)
   {
@@ -143,15 +170,33 @@ SiStripCMNAnalyzer::SiStripCMNAnalyzer(const edm::ParameterSet& iConfig)
   }
 
   firstEvent = true;
+
+  edm::Service<edm::RandomNumberGenerator> rng;
+  if ( ! rng.isAvailable()) {
+    throw cms::Exception("Configuration")
+      << "SiStripCMNAnalyzer requires the RandomNumberGeneratorService\n"
+      "which is not present in the configuration file.  You must add the service\n"
+      "in the configuration file or remove the modules that require it.";
+  }
+  
+  rndEngine       = &(rng->getEngine());
+  genNoise = new GaussianTailNoiseGenerator(*rndEngine);
+  gaussDistribution = new CLHEP::RandGaussQ(*rndEngine);
+
+  cmnTIBRMS_ = 5.92;
+  cmnTOBRMS_ = 1.08;
+  cmnTIDRMS_ = 3.08;
+  cmnTECRMS_ = 2.44;
+
 }
 
 
 SiStripCMNAnalyzer::~SiStripCMNAnalyzer()
 {
- 
-   // do anything here that needs to be done at desctruction time
-   // (e.g. close files, deallocate resources etc.)
 
+  delete genNoise;
+  delete gaussDistribution;
+ 
 }
 
 
@@ -206,18 +251,22 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
         case SiStripDetId::TIB:
           TIBMedians_->Fill(offset);
           TIB25ths_->Fill(per25);
+          TIBGens_->Fill( gaussDistribution->fire(128.,cmnTIBRMS_));
           break;
         case SiStripDetId::TOB:
           TOBMedians_->Fill(offset);
           TOB25ths_->Fill(per25);
+          TOBGens_->Fill( gaussDistribution->fire(128.,cmnTOBRMS_));
           break;
         case SiStripDetId::TID:
           TIDMedians_->Fill(offset);
           TID25ths_->Fill(per25);
+          TIDGens_->Fill( gaussDistribution->fire(128.,cmnTIDRMS_));
           break;
         case SiStripDetId::TEC:
           TECMedians_->Fill(offset);
           TEC25ths_->Fill(per25);
+          TECGens_->Fill( gaussDistribution->fire(128.,cmnTECRMS_));
           break;
       }      
       medvs25_->Fill( offset, per25);

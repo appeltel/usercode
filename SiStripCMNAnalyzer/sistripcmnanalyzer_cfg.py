@@ -5,7 +5,7 @@ process = cms.Process("Demo")
 process.load("FWCore.MessageService.MessageLogger_cfi")
 process.load("Configuration.StandardSequences.Geometry_cff")
 process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_cff")
-
+process.load("Configuration.StandardSequences.Services_cff")
 process.GlobalTag.globaltag = 'MC_37Y_V5::All'
 
 process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
@@ -18,6 +18,11 @@ process.source = cms.Source("PoolSource",
 )
 
 from RecoLocalTracker.SiStripZeroSuppression.DefaultAlgorithms_cff import *
+
+process.RandomNumberGeneratorService.cmn = cms.PSet(
+    initialSeed = cms.untracked.uint32(123456789),
+    engineName = cms.untracked.string('HepJamesRandom')
+)
 
 process.cmn = cms.EDAnalyzer('SiStripCMNAnalyzer',
     Algorithms = DefaultAlgorithms,

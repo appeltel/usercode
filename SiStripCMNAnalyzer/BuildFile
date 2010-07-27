@@ -13,6 +13,7 @@
 <use   name=RecoLocalTracker/SiStripZeroSuppression>
 <use name=FWCore/ServiceRegistry>
 <use name=CommonTools/UtilAlgos>
+<use name=SimTracker/SiStripDigitizer>
 <flags EDM_PLUGIN=1>
 <export>
    <lib name=AppeltelSiStripCMNAnalyzer>
