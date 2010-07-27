@@ -41,6 +41,18 @@
 #include "RecoLocalTracker/SiStripZeroSuppression/interface/SiStripRawProcessingFactory.h"
 #include "RecoLocalTracker/SiStripZeroSuppression/interface/SiStripRawProcessingAlgorithms.h"
 
+//#include "DataFormats/SiStripDetId/interface/SiStripSubStructure.h"
+//#include "CalibFormats/SiStripObjects/interface/SiStripDetCabling.h"
+//#include "CalibTracker/Records/interface/SiStripDetCablingRcd.h"
+//#include "DataFormats/SiStripDetId/interface/StripSubdetector.h"
+#include "DataFormats/SiStripDetId/interface/SiStripDetId.h"
+#include "DataFormats/SiStripDetId/interface/TECDetId.h"
+#include "DataFormats/SiStripDetId/interface/TIBDetId.h"
+#include "DataFormats/SiStripDetId/interface/TIDDetId.h"
+#include "DataFormats/SiStripDetId/interface/TOBDetId.h"
+
+
+
 #include <TH1.h>
 #include <TH2.h>
 #include <TString.h>
@@ -74,6 +86,14 @@ class SiStripCMNAnalyzer : public edm::EDAnalyzer {
 
       TH1F* allMedians_;
       TH1F* all25ths_;
+      TH1F* TIBMedians_;
+      TH1F* TIB25ths_;
+      TH1F* TOBMedians_;
+      TH1F* TOB25ths_;
+      TH1F* TIDMedians_;
+      TH1F* TID25ths_;
+      TH1F* TECMedians_;
+      TH1F* TEC25ths_;
       TH2F* medvs25_;
 
       // These are displays of ten interesting APV25s, with the median and 25th in the 129th and 130th points.
@@ -103,8 +123,16 @@ SiStripCMNAnalyzer::SiStripCMNAnalyzer(const edm::ParameterSet& iConfig)
 {
 
   edm::Service<TFileService> fs;
-  allMedians_=fs->make<TH1F>("allMedians","Median ADC count of APV25", 100, 0., 1000.);
-  all25ths_=fs->make<TH1F>("all25ths","25th percentile ADC count of APV25", 100, 0., 1000.);
+  allMedians_=fs->make<TH1F>("allMedians","Median ADC count of APV25", 100, 0., 500.);
+  all25ths_=fs->make<TH1F>("all25ths","25th percentile ADC count of APV25", 100, 0., 500.);
+  TIBMedians_=fs->make<TH1F>("TIBMedians","Median ADC count of APV25 for the TIB", 100, 0., 500.);
+  TIB25ths_=fs->make<TH1F>("TIB25ths","25th percentile ADC count of APV25 for the TIB", 100, 0., 500.);
+  TOBMedians_=fs->make<TH1F>("TOBMedians","Median ADC count of APV25 for the TOB", 100, 0., 500.);
+  TOB25ths_=fs->make<TH1F>("TOB25ths","25th percentile ADC count of APV25 for the TOB", 100, 0., 500.);
+  TIDMedians_=fs->make<TH1F>("TIDMedians","Median ADC count of APV25 for the TID", 100, 0., 500.);
+  TID25ths_=fs->make<TH1F>("TID25ths","25th percentile ADC count of APV25 for the TID", 100, 0., 500.);
+  TECMedians_=fs->make<TH1F>("TECMedians","Median ADC count of APV25 for the TEC", 100, 0., 500.);
+  TEC25ths_=fs->make<TH1F>("TEC25ths","25th percentile ADC count of APV25 for the TEC", 100, 0., 500.);
   medvs25_=fs->make<TH2F>("medvs25","Median ADC count versus 25th percentile",50,0.,500.,50,0.,500.);
 
   for( int i = 0; i<10; i++)
@@ -138,6 +166,8 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
    using namespace edm;
 
 
+
+
    algorithms->initialize(iSetup);
    edm::Handle< edm::DetSetVector<SiStripRawDigi> > input;
    iEvent.getByLabel(inputTag,input);
@@ -149,6 +179,7 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
          rawDigis = input->begin(); rawDigis != input->end(); rawDigis++) 
    {
     
+    SiStripDetId sid( rawDigis->detId() );
 
     std::vector<int16_t> processedRawDigis(rawDigis->size());
     algorithms->subtractorPed->subtract( *rawDigis, processedRawDigis);
@@ -169,6 +200,26 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
 
       allMedians_->Fill( offset );
       all25ths_->Fill( per25 );
+
+      switch ( sid.subdetId() ) 
+      {
+        case SiStripDetId::TIB:
+          TIBMedians_->Fill(offset);
+          TIB25ths_->Fill(per25);
+          break;
+        case SiStripDetId::TOB:
+          TOBMedians_->Fill(offset);
+          TOB25ths_->Fill(per25);
+          break;
+        case SiStripDetId::TID:
+          TIDMedians_->Fill(offset);
+          TID25ths_->Fill(per25);
+          break;
+        case SiStripDetId::TEC:
+          TECMedians_->Fill(offset);
+          TEC25ths_->Fill(per25);
+          break;
+      }      
       medvs25_->Fill( offset, per25);
 
       // make plots of the 10 wonkiest strips in the first event
@@ -178,10 +229,10 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
         maxDiff = offset-per25;
         for( int i =0; i<128; i++)
         {
-          stripCount_[currentGraph]->SetPoint(i+1,(double)i+1,(double)(*(strip+i)));
+          stripCount_[currentGraph]->SetPoint(i,(double)i+1,(double)(*(strip+i)));
         }
-        stripCount_[currentGraph]->SetPoint(129,150.,(double)offset);
-        stripCount_[currentGraph]->SetPoint(130,150.,(double)per25);
+        stripCount_[currentGraph]->SetPoint(128,150.,(double)offset);
+        stripCount_[currentGraph]->SetPoint(139,150.,(double)per25);
         currentGraph++;
         currentGraph %= 10;
       }
