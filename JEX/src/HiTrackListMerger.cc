@@ -105,7 +105,7 @@ namespace cms
     bool allowFirstHitShare = conf_.getParameter<bool>("allowFirstHitShare");
 
     double tC1MinPt = conf_.getParameter<double>("trackCollection1MinPt");
-    double tC1MaxPt = conf_.getParameter<double>("trackCollection1MinPt");
+    double tC1MaxPt = conf_.getParameter<double>("trackCollection1MaxPt");
     double tC2MinPt = conf_.getParameter<double>("trackCollection2MinPt");
     double tC2MaxPt = conf_.getParameter<double>("trackCollection2MaxPt");
 
