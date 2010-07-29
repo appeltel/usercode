@@ -9,6 +9,7 @@ mv UserCode/Appeltel/hackedSiStripDigitizer/SiStripDigitizer.h SimTracker/SiStri
 mv UserCode/Appeltel/hackedSiStripDigitizer/SiStripDigitizer.cc SimTracker/SiStripDigitizer/plugins/SiStripDigitizer.cc
 mv UserCode/Appeltel/hackedSiStripDigitizer/SiStripDigitizerAlgorithm.h SimTracker/SiStripDigitizer/interface/SiStripDigitizerAlgorithm.h
 mv UserCode/Appeltel/hackedSiStripDigitizer/SiStripDigitizerAlgorithm.cc SimTracker/SiStripDigitizer/src/SiStripDigitizerAlgorithm.cc
+mv UserCode/Appeltel/hackedSiStripDigitizer/SiStripDigi_cfi.py SimTracker/SiStripDigitizer/python/SiStripDigi_cfi.py
 
 scram b
 
