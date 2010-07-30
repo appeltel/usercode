@@ -86,7 +86,12 @@ class SiStripCMNAnalyzer : public edm::EDAnalyzer {
 
       void processRaw(const edm::InputTag&, const edm::DetSetVector<SiStripRawDigi>&, std::vector<edm::DetSet<SiStripDigi> >& );
       std::auto_ptr<SiStripRawProcessingAlgorithms> algorithms;
+
       edm::InputTag inputTag;
+      edm::InputTag inputTagNoise;
+      edm::InputTag inputTagSignal;
+      bool doNoiseAndSignal;
+
 
       CLHEP::HepRandomEngine* rndEngine;
       CLHEP::RandGaussQ* gaussDistribution;
@@ -118,6 +123,8 @@ class SiStripCMNAnalyzer : public edm::EDAnalyzer {
       // These are displays of ten interesting APV25s, with the median and 25th in the 129th and 130th points.
 
       TGraph* stripCount_[10];
+      TGraph* stripSignalCount_[10];
+
 
       bool firstEvent;
 
@@ -138,7 +145,10 @@ class SiStripCMNAnalyzer : public edm::EDAnalyzer {
 //
 SiStripCMNAnalyzer::SiStripCMNAnalyzer(const edm::ParameterSet& iConfig)
   :  algorithms(SiStripRawProcessingFactory::create(iConfig.getParameter<edm::ParameterSet>("Algorithms"))),
-     inputTag(iConfig.getParameter<edm::InputTag>("RawDigiProducersList"))
+     inputTag(iConfig.getParameter<edm::InputTag>("RawDigiProducersList")),
+     inputTagNoise(iConfig.getParameter<edm::InputTag>("RawDigiProducersListNoise")),
+     inputTagSignal(iConfig.getParameter<edm::InputTag>("RawDigiProducersListSignal")),
+     doNoiseAndSignal(iConfig.getParameter<bool>("doNoiseAndSignal"))
 {
 
   edm::Service<TFileService> fs;
@@ -166,7 +176,11 @@ SiStripCMNAnalyzer::SiStripCMNAnalyzer(const edm::ParameterSet& iConfig)
   {
     stripCount_[i] = fs->make<TGraph>(130);
     stripCount_[i]->SetName(Form("stripCount%d",i));
-
+    if ( doNoiseAndSignal )
+    {
+      stripSignalCount_[i] = fs->make<TGraph>(128);
+      stripSignalCount_[i]->SetName(Form("stripSignalCount%d",i));
+    }
   }
 
   firstEvent = true;
@@ -216,6 +230,14 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
    algorithms->initialize(iSetup);
    edm::Handle< edm::DetSetVector<SiStripRawDigi> > input;
    iEvent.getByLabel(inputTag,input);
+   
+   edm::Handle< edm::DetSetVector<SiStripRawDigi> > inputNoise;
+   edm::Handle< edm::DetSetVector<SiStripRawDigi> > inputSignal;
+   if ( doNoiseAndSignal )
+   {
+     iEvent.getByLabel(inputTagNoise,inputNoise);
+     iEvent.getByLabel(inputTagSignal,inputSignal);
+   }
 
    float maxDiff = 0;
    int currentGraph = 0;
@@ -223,17 +245,51 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
    for ( edm::DetSetVector<SiStripRawDigi>::const_iterator 
          rawDigis = input->begin(); rawDigis != input->end(); rawDigis++) 
    {
-    
+     
+    edm::DetSetVector<SiStripRawDigi>::const_iterator  rawSignalDigis;
+
+    if ( doNoiseAndSignal )
+    {
+      // need to replace this with an Association Map!
+      rawSignalDigis = inputSignal->begin();
+      for (rawSignalDigis = inputSignal->begin(); rawSignalDigis != inputSignal->end(); rawSignalDigis++)
+        if( rawDigis->detId() == rawSignalDigis->detId() ) break;
+    }  
+
+
     SiStripDetId sid( rawDigis->detId() );
 
     std::vector<int16_t> processedRawDigis(rawDigis->size());
     algorithms->subtractorPed->subtract( *rawDigis, processedRawDigis);
  
+    std::vector<int16_t> signalDigis(rawDigis->size());
+    if ( doNoiseAndSignal )
+    {
+      if ( rawSignalDigis != inputSignal->end() && rawSignalDigis->size() == rawDigis->size() )
+      {
+        std::vector<int16_t>::iterator sD = signalDigis.begin();
+        edm::DetSet<SiStripRawDigi>::const_iterator rSD = rawSignalDigis->begin();
+        while ( rSD != rawSignalDigis->end() )
+        {
+          *sD = rSD->adc();
+          ++sD;
+          ++rSD;
+        }
+      } 
+      else 
+      {
+        for( std::vector<int16_t>::iterator sD = signalDigis.begin(); sD != signalDigis.end(); sD++ )
+          *sD = 0;
+      }
+    }
+
+
     // MEDIAN ALGORITHM
 
     std::vector<int16_t> tmp;  tmp.reserve(128);  
     std::vector<int16_t>::iterator  
         strip( processedRawDigis.begin() ), 
+        signal(signalDigis.begin() ),
         end(   processedRawDigis.end()   ),
         endAPV;
   
@@ -279,15 +335,17 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
         for( int i =0; i<128; i++)
         {
           stripCount_[currentGraph]->SetPoint(i,(double)i+1,(double)(*(strip+i)));
+          if(doNoiseAndSignal) stripSignalCount_[currentGraph]->SetPoint(i,(double)i+1,(double)(*(signal+i)));
         }
         stripCount_[currentGraph]->SetPoint(128,150.,(double)offset);
-        stripCount_[currentGraph]->SetPoint(139,150.,(double)per25);
+        stripCount_[currentGraph]->SetPoint(129,150.,(double)per25);
         currentGraph++;
         currentGraph %= 10;
       }
 
 
       strip += 128;
+      signal += 128;
     }
     
 
