@@ -55,8 +55,8 @@ simSiStripDigis = cms.EDProducer("SiStripDigitizer",
                                                        ZSDigi = cms.string('ZeroSuppressed'),
                                                        PRDigi = cms.string('ProcessedRaw'),
                                                        # --- BEGIN HACK --- #
-                                                       VRNoiseDigi = cms.string('VirginRawSignal'),
-                                                       VRSignalDigi = cms.string('VirginRawNoise'),
+                                                       VRNoiseDigi = cms.string('VirginRawNoise'),
+                                                       VRSignalDigi = cms.string('VirginRawSignal'),
                                                        # --- BEGIN HACK --- #
                                                        VRDigi = cms.string('VirginRaw')),
                                ROUList = cms.vstring("g4SimHitsTrackerHitsTIBLowTof","g4SimHitsTrackerHitsTIBHighTof",
