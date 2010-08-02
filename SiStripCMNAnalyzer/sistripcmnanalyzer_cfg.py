@@ -44,27 +44,43 @@ process.poolDBESSource = cms.ESSource("PoolDBESSource",
 
 process.es_prefer_my =cms.ESPrefer("PoolDBESSource","poolDBESSource")
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(100) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(10) )
 
 process.source = cms.Source("PoolSource",
     # replace 'myfile.root' with the source file you want to use
     fileNames = cms.untracked.vstring(
-    'file:/net/hibat0007/d00/scratch/appelte1/DiJet_B0_2760GeV_MC_37Y_V4_RECO_TrkZS.root'
+'/store/user/icali/Hydjet_Quenched_MinBias_2760GeV/Hydjet_Quenched_b0_DiJet120_2760GeV_MC_37Y_V5_TrkVR_OnlyBS_FiveTimesBigger/35475ada32de29e04cd11322eaedaaea/DiJet_B0_2760GeV_MC_37Y_V5_RECO_TrkVR_OnlyBS_9_1_Uea.root',
+       '/store/user/icali/Hydjet_Quenched_MinBias_2760GeV/Hydjet_Quenched_b0_DiJet120_2760GeV_MC_37Y_V5_TrkVR_OnlyBS_FiveTimesBigger/35475ada32de29e04cd11322eaedaaea/DiJet_B0_2760GeV_MC_37Y_V5_RECO_TrkVR_OnlyBS_99_1_iVy.root',
+       '/store/user/icali/Hydjet_Quenched_MinBias_2760GeV/Hydjet_Quenched_b0_DiJet120_2760GeV_MC_37Y_V5_TrkVR_OnlyBS_FiveTimesBigger/35475ada32de29e04cd11322eaedaaea/DiJet_B0_2760GeV_MC_37Y_V5_RECO_TrkVR_OnlyBS_98_1_IW6.root',
+       '/store/user/icali/Hydjet_Quenched_MinBias_2760GeV/Hydjet_Quenched_b0_DiJet120_2760GeV_MC_37Y_V5_TrkVR_OnlyBS_FiveTimesBigger/35475ada32de29e04cd11322eaedaaea/DiJet_B0_2760GeV_MC_37Y_V5_RECO_TrkVR_OnlyBS_97_1_jsZ.root',
+       '/store/user/icali/Hydjet_Quenched_MinBias_2760GeV/Hydjet_Quenched_b0_DiJet120_2760GeV_MC_37Y_V5_TrkVR_OnlyBS_FiveTimesBigger/35475ada32de29e04cd11322eaedaaea/DiJet_B0_2760GeV_MC_37Y_V5_RECO_TrkVR_OnlyBS_96_1_DkZ.root',
+       '/store/user/icali/Hydjet_Quenched_MinBias_2760GeV/Hydjet_Quenched_b0_DiJet120_2760GeV_MC_37Y_V5_TrkVR_OnlyBS_FiveTimesBigger/35475ada32de29e04cd11322eaedaaea/DiJet_B0_2760GeV_MC_37Y_V5_RECO_TrkVR_OnlyBS_95_1_VGg.root',
+       '/store/user/icali/Hydjet_Quenched_MinBias_2760GeV/Hydjet_Quenched_b0_DiJet120_2760GeV_MC_37Y_V5_TrkVR_OnlyBS_FiveTimesBigger/35475ada32de29e04cd11322eaedaaea/DiJet_B0_2760GeV_MC_37Y_V5_RECO_TrkVR_OnlyBS_94_1_ZrQ.root',
+       '/store/user/icali/Hydjet_Quenched_MinBias_2760GeV/Hydjet_Quenched_b0_DiJet120_2760GeV_MC_37Y_V5_TrkVR_OnlyBS_FiveTimesBigger/35475ada32de29e04cd11322eaedaaea/DiJet_B0_2760GeV_MC_37Y_V5_RECO_TrkVR_OnlyBS_93_1_wDk.root',
+       '/store/user/icali/Hydjet_Quenched_MinBias_2760GeV/Hydjet_Quenched_b0_DiJet120_2760GeV_MC_37Y_V5_TrkVR_OnlyBS_FiveTimesBigger/35475ada32de29e04cd11322eaedaaea/DiJet_B0_2760GeV_MC_37Y_V5_RECO_TrkVR_OnlyBS_723_1_3ls.root',
+       '/store/user/icali/Hydjet_Quenched_MinBias_2760GeV/Hydjet_Quenched_b0_DiJet120_2760GeV_MC_37Y_V5_TrkVR_OnlyBS_FiveTimesBigger/35475ada32de29e04cd11322eaedaaea/DiJet_B0_2760GeV_MC_37Y_V5_RECO_TrkVR_OnlyBS_722_1_Uvb.root',
+       '/store/user/icali/Hydjet_Quenched_MinBias_2760GeV/Hydjet_Quenched_b0_DiJet120_2760GeV_MC_37Y_V5_TrkVR_OnlyBS_FiveTimesBigger/35475ada32de29e04cd11322eaedaaea/DiJet_B0_2760GeV_MC_37Y_V5_RECO_TrkVR_OnlyBS_695_1_kxa.root',
+       '/store/user/icali/Hydjet_Quenched_MinBias_2760GeV/Hydjet_Quenched_b0_DiJet120_2760GeV_MC_37Y_V5_TrkVR_OnlyBS_FiveTimesBigger/35475ada32de29e04cd11322eaedaaea/DiJet_B0_2760GeV_MC_37Y_V5_RECO_TrkVR_OnlyBS_694_1_dDK.root',
+       '/store/user/icali/Hydjet_Quenched_MinBias_2760GeV/Hydjet_Quenched_b0_DiJet120_2760GeV_MC_37Y_V5_TrkVR_OnlyBS_FiveTimesBigger/35475ada32de29e04cd11322eaedaaea/DiJet_B0_2760GeV_MC_37Y_V5_RECO_TrkVR_OnlyBS_693_1_Gxh.root',
+       '/store/user/icali/Hydjet_Quenched_MinBias_2760GeV/Hydjet_Quenched_b0_DiJet120_2760GeV_MC_37Y_V5_TrkVR_OnlyBS_FiveTimesBigger/35475ada32de29e04cd11322eaedaaea/DiJet_B0_2760GeV_MC_37Y_V5_RECO_TrkVR_OnlyBS_692_1_P1f.root',
+       '/store/user/icali/Hydjet_Quenched_MinBias_2760GeV/Hydjet_Quenched_b0_DiJet120_2760GeV_MC_37Y_V5_TrkVR_OnlyBS_FiveTimesBigger/35475ada32de29e04cd11322eaedaaea/DiJet_B0_2760GeV_MC_37Y_V5_RECO_TrkVR_OnlyBS_691_1_mAg.root'
     )
 )
 
 from RecoLocalTracker.SiStripZeroSuppression.DefaultAlgorithms_cff import *
+from RecoLocalTracker.SiStripClusterizer.DefaultClusterizer_cff import *
 
 process.cmn = cms.EDAnalyzer('SiStripCMNAnalyzer',
+    Clusterizer = DefaultClusterizer,
     Algorithms = DefaultAlgorithms,
     RawDigiProducersList = cms.InputTag('simSiStripDigis','VirginRaw'),
-    RawDigiProducersListNoise = cms.InputTag('simSiStripDigis','VirginRawNoise'),
-    RawDigiProducersListSignal = cms.InputTag('simSiStripDigis','VirginRawSignal'),
-    doNoiseAndSignal = cms.bool(True)
+    RawDigiProducersListNoise = cms.InputTag('simSiStripDigis','VirginRawSignal'),
+    RawDigiProducersListSignal = cms.InputTag('simSiStripDigis','VirginRawNoise'),
+    doNoiseAndSignal = cms.bool(False)
 )
 
 process.TFileService = cms.Service("TFileService",
-    fileName = cms.string('cmn_1sig.root')
+    fileName = cms.string('cmn.root')
 )
 
 
