@@ -13,237 +13,19 @@
 //
 // Original Author:  Eric Appelt
 //         Created:  Mon Jul 26 10:37:24 CDT 2010
-// $Id$
+// $Id: SiStripCMNAnalyzer.cc,v 1.7 2010/08/04 14:02:24 appeltel Exp $
 //
 //
 
+#include "Appeltel/SiStripCMNAnalyzer/interface/SiStripCMNAnalyzer.h"
 
-// system include files
 #include <memory>
 #include <iostream>
-
-// user include files
-#include "FWCore/Framework/interface/Frameworkfwd.h"
-#include "FWCore/Framework/interface/EDAnalyzer.h"
-#include "FWCore/Utilities/interface/InputTag.h"
-
-
-#include "FWCore/Framework/interface/Event.h"
-#include "FWCore/Framework/interface/EventSetup.h"
-#include "DataFormats/Common/interface/Handle.h"
-#include "FWCore/Framework/interface/MakerMacros.h"
-
-#include "FWCore/ParameterSet/interface/ParameterSet.h"
-#include "DataFormats/Common/interface/DetSet.h"
-#include "DataFormats/Common/interface/DetSetVector.h"
-#include "DataFormats/Common/interface/DetSetVectorNew.h"
-#include "DataFormats/SiStripDigi/interface/SiStripDigi.h"
-#include "DataFormats/SiStripDigi/interface/SiStripRawDigi.h"
-#include "RecoLocalTracker/SiStripZeroSuppression/interface/SiStripRawProcessingFactory.h"
-#include "RecoLocalTracker/SiStripZeroSuppression/interface/SiStripRawProcessingAlgorithms.h"
-#include "DataFormats/SiStripCluster/interface/SiStripCluster.h"
-#include "DataFormats/SiStripCluster/interface/SiStripClusterCollection.h"
-
-#include "RecoLocalTracker/SiStripClusterizer/interface/StripClusterizerAlgorithm.h"
-#include "RecoLocalTracker/SiStripClusterizer/interface/StripClusterizerAlgorithmFactory.h"
-
-
-#include "DataFormats/SiStripDetId/interface/SiStripDetId.h"
-#include "DataFormats/SiStripDetId/interface/TECDetId.h"
-#include "DataFormats/SiStripDetId/interface/TIBDetId.h"
-#include "DataFormats/SiStripDetId/interface/TIDDetId.h"
-#include "DataFormats/SiStripDetId/interface/TOBDetId.h"
-
-#include "FWCore/Utilities/interface/RandomNumberGenerator.h"
-#include "CLHEP/Random/RandGaussQ.h"
-#include "SimGeneral/NoiseGenerators/interface/GaussianTailNoiseGenerator.h"
-#include "CLHEP/Random/RandomEngine.h"
-
-#include "CondFormats/SiStripObjects/interface/SiStripNoises.h"
-#include "CalibFormats/SiStripObjects/interface/SiStripQuality.h"
-#include "CondFormats/DataRecord/interface/SiStripNoisesRcd.h"
-#include "CalibTracker/Records/interface/SiStripQualityRcd.h"
-
-#include <TH1.h>
-#include <TH2.h>
-#include <TString.h>
-#include <TGraph.h>
-
-#include "FWCore/ServiceRegistry/interface/Service.h"
-#include "CommonTools/UtilAlgos/interface/TFileService.h"
-
-
-//
-// class declaration
-//
-
-class SiStripCMNAnalyzer : public edm::EDAnalyzer {
-
-   typedef   edmNew::DetSetVector<SiStripCluster> ClusterCollection;
-   typedef   edmNew::DetSet<SiStripCluster>::const_iterator ClusIter;
-
-   public:
-      explicit SiStripCMNAnalyzer(const edm::ParameterSet&);
-      ~SiStripCMNAnalyzer();
-
-
-   private:
-      virtual void beginJob() ;
-      virtual void analyze(const edm::Event&, const edm::EventSetup&);
-      virtual void endJob() ;
-
-      inline float median( std::vector<int16_t>& sample);
-      inline float pairMedian( std::vector<std::pair<float,float> >& sample);
-      inline float percentile ( std::vector<int16_t>& sample, double pct);
-      inline float integrateADC ( std::vector<int16_t>& sample, double offset);
-
-      void subtractMedian( std::vector<int16_t>& in, std::vector<int16_t>& out, std::vector<float>& results);
-      void subtractPer25( std::vector<int16_t>& in, std::vector<int16_t>& out, std::vector<float>& results);
-      void subtractIterMed( std::vector<int16_t>& in, std::vector<int16_t>& out, 
-                            std::vector<float>& results, uint32_t detId);
-
-      int digiCount( edm::DetSet<SiStripDigi>& module, int APV );
-
-      void processRaw(const edm::InputTag&, const edm::DetSetVector<SiStripRawDigi>&, std::vector<edm::DetSet<SiStripDigi> >& );
-
-      // As a dumb hack, clusters for the gallery plot are stored in a TGraph with  
-      // (x,y) = (first strip, last strip) or (0,0) if there is no cluster.
-
-      void makeClusterGraph( edmNew::DetSetVector<SiStripCluster>& clusters, TGraph * graph, int APV );
-
-      void fillClusterWidths( edmNew::DetSetVector<SiStripCluster>& clusters, TH1F * hist, int APV );
-      int countClusters( edmNew::DetSetVector<SiStripCluster>&clusters, int APV);
-
-      std::auto_ptr<SiStripRawProcessingAlgorithms> algorithms;
-      std::auto_ptr<StripClusterizerAlgorithm> clusterAlgorithm;
-
-      edm::InputTag inputTag;
-      edm::InputTag inputTagNoise;
-      edm::InputTag inputTagSignal;
-      bool doNoiseAndSignal;
-
-      CLHEP::HepRandomEngine* rndEngine;
-      CLHEP::RandGaussQ* gaussDistribution;
-      GaussianTailNoiseGenerator* genNoise;
-
-      edm::ESHandle<SiStripNoises> noiseHandle;
-      edm::ESHandle<SiStripQuality> qualityHandle;
-      uint32_t noise_cache_id, quality_cache_id;
-
-
-      float cmnTIBRMS_;
-      float cmnTOBRMS_;
-      float cmnTIDRMS_;
-      float cmnTECRMS_;
-
-
-      TH1F* allMedians_;
-      TH1F* all25ths_;
-      TH1F* allIterMeds_;
-      TH1F* TIBMedians_;
-      TH1F* TIB25ths_;
-      TH1F* TIBIterMeds_;
-      TH1F* TIBGens_;
-      TH1F* TOBMedians_;
-      TH1F* TOB25ths_;
-      TH1F* TOBIterMeds_;
-      TH1F* TOBGens_;
-      TH1F* TIDMedians_;
-      TH1F* TID25ths_;
-      TH1F* TIDIterMeds_;
-      TH1F* TIDGens_;
-      TH1F* TECMedians_;
-      TH1F* TEC25ths_;
-      TH1F* TECIterMeds_;
-      TH1F* TECGens_;
-      TH2F* medvs25_;
-
-      // Occupancy Comparison
-
-      TH2F* medianOccupancy_;
-      TH2F* medianTrueOccupancy_;
-      TH2F* per25Occupancy_;
-      TH2F* per25TrueOccupancy_;
-      TH2F* iterMedOccupancy_;
-      TH2F* iterMedTrueOccupancy_;
-
-      // Cluster width
-
-      TH1F* medianClusWidth_;
-      TH1F* iterMedClusWidth_;
-      TH1F* per25ClusWidth_;
-
-      // Clusters per APV
-
-      TH1F* medianAPVClusNum_;
-      TH1F* iterMedAPVClusNum_;
-      TH1F* per25APVClusNum_;
- 
-      //
-      // For each gallery there  are displays of ten interesting APV25s, 
-      // with the median and 25th in the 129th and 130th points.
-
-      TGraph* galACount_[10];
-      TGraph* galASignalCount_[10];
-      TGraph* galBCount_[10];
-      TGraph* galBSignalCount_[10];
-      TGraph* galDCount_[10];
-      TGraph* galDSignalCount_[10];
-      TGraph* galECount_[10];
-      TGraph* galESignalCount_[10];
-  
-      // These graphs are really just storage for clusters for the APV25s graphed above.
-      // This is a stupid way to do things and they should be replaced by nTuples
-      // or something. I am doing this as a path of least resistance given my current knowledge of ROOT.
-
-      TGraph* galAMedianClusters_[10];
-      TGraph* galAPer25Clusters_[10]; 
-      TGraph* galAIterMedClusters_[10]; 
-      TGraph* galBMedianClusters_[10];
-      TGraph* galBPer25Clusters_[10]; 
-      TGraph* galBIterMedClusters_[10]; 
-      TGraph* galDMedianClusters_[10];
-      TGraph* galDPer25Clusters_[10]; 
-      TGraph* galDIterMedClusters_[10]; 
-      TGraph* galEMedianClusters_[10];
-      TGraph* galEPer25Clusters_[10]; 
-      TGraph* galEIterMedClusters_[10]; 
- 
-      // Histograms of integrated ADC  on each APV
-
-      TH1F* totalADCMedian_;
-      TH1F* totalADCPer25_;
-      TH1F* totalADCIterMed_;
-
-      // for comparison to actual integrated ADC from signal only with perfect baseline
-
-      TH1F* totalADCSignal_;
-      TH1F* totalADCMedianDiff_;
-      TH1F* totalADCPer25Diff_;
-      TH1F* totalADCIterMedDiff_;
-
-      // Cluster Comparison
- 
-      TH1F* medianTotalClus_;
-      TH1F* per25TotalClus_;
-      TH1F* iterMedTotalClus_;
-      TH1F* signalTotalClus_;
-
-
-      int galAcount;
-      int galBcount;
-      int galDcount;
-      int galEcount;
-
-};
 
 SiStripCMNAnalyzer::SiStripCMNAnalyzer(const edm::ParameterSet& iConfig)
   :  algorithms(SiStripRawProcessingFactory::create(iConfig.getParameter<edm::ParameterSet>("Algorithms"))),
      clusterAlgorithm( StripClusterizerAlgorithmFactory::create(iConfig.getParameter<edm::ParameterSet>("Clusterizer")) ), 
-     inputTag(iConfig.getParameter<edm::InputTag>("RawDigiProducersList")),
-     inputTagNoise(iConfig.getParameter<edm::InputTag>("RawDigiProducersListNoise")),
-     inputTagSignal(iConfig.getParameter<edm::InputTag>("RawDigiProducersListSignal")),
-     doNoiseAndSignal(iConfig.getParameter<bool>("doNoiseAndSignal"))
+     inputTag(iConfig.getParameter<edm::InputTag>("RawDigiProducersList"))
 {
 
   edm::Service<TFileService> fs;
@@ -258,15 +40,6 @@ SiStripCMNAnalyzer::SiStripCMNAnalyzer(const edm::ParameterSet& iConfig)
                                   128.,0.,128.,500,0.,500.);
   per25Occupancy_=fs->make<TH2F>("per25Occupancy","25th Percentile ADC count of APV25 versus Reconstructed # of Unsuppressed Strips",
                                   128.,0.,128.,500,0.,500.);
-  if(doNoiseAndSignal)
-  {
-    medianTrueOccupancy_=fs->make<TH2F>("medianTrueOccupancy","Median ADC count of APV25 versus MC Correct # of Unsuppressed Strips",
-                                    128.,0.,128.,500,0.,500.);
-    iterMedTrueOccupancy_=fs->make<TH2F>("iterMedTrueOccupancy","Iterated Median ADC count of APV25 versus MC Correct # of Unsuppressed Strips",
-                                    128.,0.,128.,500,0.,500.);
-    per25TrueOccupancy_=fs->make<TH2F>("per25TrueOccupancy","25th Percentile ADC count of APV25 versus MC Correct # of Unsuppressed Strips",
-                                    128.,0.,128.,500,0.,500.);
-  }
 
   TIBMedians_=fs->make<TH1F>("TIBMedians","Median ADC count of APV25 for the TIB", 500, 0., 255.);
   TIBIterMeds_=fs->make<TH1F>("TIBIterMeds","Iterated Median ADC count of APV25 for the TIB", 500, 0., 255.);
@@ -292,22 +65,10 @@ SiStripCMNAnalyzer::SiStripCMNAnalyzer(const edm::ParameterSet& iConfig)
   totalADCMedian_=fs->make<TH1F>("totalADCMedian","Integrated ADC count for each APV25 after Median CMN subtraction",500,0.,10000.);
   totalADCIterMed_=fs->make<TH1F>("totalADCIterMed","Integrated ADC count for each APV25 after Iterated Median CMN subtraction",500,0.,10000.);
   totalADCPer25_=fs->make<TH1F>("totalADCPer25","Integrated ADC count for each APV25 after 25th Percentile CMN subtraction",500,0.,10000.);
-  if(doNoiseAndSignal)
-  {
-    totalADCSignal_=fs->make<TH1F>("totalADCSignal","Integrated ADC count for each APV25 from true SimHits only",500,0.,10000.);
-    totalADCMedianDiff_=fs->make<TH1F>("totalADCMedianDiff",
-      "Difference between median subtracted integrated ADC count and ADC count from signal",500,-3000.,2000.);
-    totalADCIterMedDiff_=fs->make<TH1F>("totalADCIterMedDiff",
-      "Difference between iterated median subtracted integrated ADC count and ADC count from signal",500,-3000.,2000.);
-    totalADCPer25Diff_=fs->make<TH1F>("totalADCPer25Diff",
-      "Difference between 25th percentile subtracted integrated ADC count and ADC count from signal",500,-3000.,2000.);
-  }    
   
   medianTotalClus_=fs->make<TH1F>("medianTotalClus","Number of clusters found using median CMN subtraction",500,0,500000.);
   iterMedTotalClus_=fs->make<TH1F>("iterMedTotalClus","Number of clusters found using iterated median CMN subtraction",500,0,500000.);
   per25TotalClus_=fs->make<TH1F>("per25TotalClus","Number of clusters found using median CMN subtraction",500,0,500000.);
-  if(doNoiseAndSignal)
-    signalTotalClus_=fs->make<TH1F>("signalTotalClus","Number of clusters found using median CMN subtraction",500,0,500000.);
 
   medianClusWidth_ = fs->make<TH1F>("medianClusWidth","Cluster Width - Median CMN Subtraction",256,0.,256.);
   iterMedClusWidth_ = fs->make<TH1F>("iterMedClusWidth","Cluster Width - Iterated Median CMN Subtraction",256,0.,256.);
@@ -352,17 +113,6 @@ SiStripCMNAnalyzer::SiStripCMNAnalyzer(const edm::ParameterSet& iConfig)
     galEIterMedClusters_[i]->SetName(Form("galEIterMedClusters%d",i));
     galEPer25Clusters_[i] = fs->make<TGraph>(128);
     galEPer25Clusters_[i]->SetName(Form("galEPer25Clusters%d",i));
-    if ( doNoiseAndSignal )
-    {
-      galASignalCount_[i] = fs->make<TGraph>(128);
-      galASignalCount_[i]->SetName(Form("galASignalCount%d",i));
-      galBSignalCount_[i] = fs->make<TGraph>(128);
-      galBSignalCount_[i]->SetName(Form("galBSignalCount%d",i));
-      galDSignalCount_[i] = fs->make<TGraph>(128);
-      galDSignalCount_[i]->SetName(Form("galDSignalCount%d",i));
-      galESignalCount_[i] = fs->make<TGraph>(128);
-      galESignalCount_[i]->SetName(Form("galESignalCount%d",i));
-    }
   }
 
 
@@ -414,11 +164,6 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
    
    edm::Handle< edm::DetSetVector<SiStripRawDigi> > inputNoise;
    edm::Handle< edm::DetSetVector<SiStripRawDigi> > inputSignal;
-   if ( doNoiseAndSignal )
-   {
-     iEvent.getByLabel(inputTagNoise,inputNoise);
-     iEvent.getByLabel(inputTagSignal,inputSignal);
-   }
 
    uint32_t n_cache_id = iSetup.get<SiStripNoisesRcd>().cacheIdentifier();
    uint32_t q_cache_id = iSetup.get<SiStripQualityRcd>().cacheIdentifier();
@@ -436,7 +181,6 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
    int medianTotClus =0;
    int iterMedTotClus =0;
    int per25TotClus =0;
-   int signalTotClus =0;
 
    //----------------------------------
    //
@@ -457,7 +201,6 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
      std::vector<int16_t> medianSubtractedDigis(rawDigis->size());
      std::vector<int16_t> per25SubtractedDigis(rawDigis->size());
      std::vector<int16_t> iterMedSubtractedDigis( rawDigis->size());
-     std::vector<int16_t> signalSubtractedDigis( rawDigis->size()); // Digi Truth
      std::vector<float> medianOffset;
      std::vector<float> iterMedOffset;
      std::vector<float> per25Offset;
@@ -465,7 +208,6 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
      edm::DetSet<SiStripDigi> medianZSDigis(rawDigis->id);
      edm::DetSet<SiStripDigi> per25ZSDigis(rawDigis->id);
      edm::DetSet<SiStripDigi> iterMedZSDigis(rawDigis->id);
-     edm::DetSet<SiStripDigi> signalZSDigis(rawDigis->id); // Digi Truth
      
      SiStripDetId sid( rawDigis->detId() );
 
@@ -474,25 +216,10 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
      edm::DetSetVector<SiStripDigi> medianZSVec;
      edm::DetSetVector<SiStripDigi> per25ZSVec;
      edm::DetSetVector<SiStripDigi> iterMedZSVec;
-     edm::DetSetVector<SiStripDigi> signalZSVec;
 
      edmNew::DetSetVector<SiStripCluster> medianClusterVec;
      edmNew::DetSetVector<SiStripCluster> per25ClusterVec;
      edmNew::DetSetVector<SiStripCluster> iterMedClusterVec;
-     edmNew::DetSetVector<SiStripCluster> signalClusterVec;
-
-     // ---
-     // Match real Digis with the signal only Digis
-     // if they are available
-     //
-
-     edm::DetSetVector<SiStripRawDigi>::const_iterator  rawSignalDigis;
-     if ( doNoiseAndSignal ) // Slow - should replace this with an Association Map!
-     {
-       rawSignalDigis = inputSignal->begin();
-       for (rawSignalDigis = inputSignal->begin(); rawSignalDigis != inputSignal->end(); rawSignalDigis++)
-         if( rawDigis->detId() == rawSignalDigis->detId() ) break;
-     }   
 
     // ---
     // Perform pedestal subtraction
@@ -508,25 +235,6 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     subtractIterMed( pedestalSubDigis, iterMedSubtractedDigis, iterMedOffset, rawDigis->detId() );
     subtractPer25( pedestalSubDigis, per25SubtractedDigis, per25Offset );
 
-    // for the signal digis, there is no baseline to remove. 
-    // still need to convert to <int16_t> and fill with zeros if something is funky.
-    // or if there are no signals 
-
-    if ( doNoiseAndSignal ) {
-      if ( rawSignalDigis != inputSignal->end() && rawSignalDigis->size() == rawDigis->size() ) {
-        std::vector<int16_t>::iterator sD = signalSubtractedDigis.begin();
-        edm::DetSet<SiStripRawDigi>::const_iterator rSD = rawSignalDigis->begin();
-        while ( rSD != rawSignalDigis->end() ) {
-          *sD = rSD->adc();
-          ++sD;
-          ++rSD;
-        }
-      } else { 
-        for( std::vector<int16_t>::iterator sD = signalSubtractedDigis.begin(); sD != signalSubtractedDigis.end(); sD++ )
-          *sD = 0;
-      }
-    }
-
     // ---
     // Now perform zero subtraction on the module for each CMN remover algorithm 
     //
@@ -534,7 +242,6 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     algorithms->suppressor->suppress( medianSubtractedDigis, medianZSDigis );
     algorithms->suppressor->suppress( iterMedSubtractedDigis, iterMedZSDigis );
     algorithms->suppressor->suppress( per25SubtractedDigis, per25ZSDigis );
-    algorithms->suppressor->suppress( signalSubtractedDigis, signalZSDigis );
 
     // ---
     // Run the clusterizer on the ZS digis
@@ -543,17 +250,14 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     medianZSVec.insert(medianZSDigis);
     per25ZSVec.insert(per25ZSDigis);
     iterMedZSVec.insert(iterMedZSDigis);
-    signalZSVec.insert(signalZSDigis);
 
     clusterAlgorithm->clusterize(medianZSVec, medianClusterVec);
     clusterAlgorithm->clusterize(iterMedZSVec, iterMedClusterVec);
     clusterAlgorithm->clusterize(per25ZSVec, per25ClusterVec);
-    clusterAlgorithm->clusterize(signalZSVec, signalClusterVec);
 
     medianTotClus += medianClusterVec.dataSize();
     iterMedTotClus += iterMedClusterVec.dataSize();
     per25TotClus += per25ClusterVec.dataSize();
-    signalTotClus += signalClusterVec.dataSize();
 
     //---------------------------------------------------
     //
@@ -568,19 +272,11 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
       //
 
       std::vector<int16_t> adc;  adc.reserve(128);  
-      std::vector<int16_t> adcSignal; adcSignal.reserve(128);
       { 
         std::vector<int16_t>::const_iterator beginAPV, endAPV;
         beginAPV = pedestalSubDigis.begin(); beginAPV += 128*APV;
         endAPV = beginAPV + 128;
         adc.insert(adc.end(),beginAPV, endAPV);
-      }
-      if ( doNoiseAndSignal) 
-      {
-        std::vector<int16_t>::const_iterator beginAPV, endAPV;
-        beginAPV = signalSubtractedDigis.begin(); beginAPV += 128*APV;
-        endAPV = beginAPV + 128;
-        adcSignal.insert(adcSignal.end(),beginAPV, endAPV);
       }
 
       // ---
@@ -626,12 +322,6 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
       medianOccupancy_->Fill( digiCount(medianZSDigis, APV), medianOffset[APV] );
       iterMedOccupancy_->Fill( digiCount(iterMedZSDigis, APV), iterMedOffset[APV] );
       per25Occupancy_->Fill( digiCount(per25ZSDigis, APV), per25Offset[APV] );
-      if(doNoiseAndSignal)
-      {
-        medianTrueOccupancy_->Fill( digiCount(signalZSDigis, APV), medianOffset[APV] );
-        iterMedTrueOccupancy_->Fill( digiCount(signalZSDigis, APV), iterMedOffset[APV] );
-        per25TrueOccupancy_->Fill( digiCount(signalZSDigis, APV), per25Offset[APV] );
-      }
 
       // ---
       // Make cluster width and count histos
@@ -656,14 +346,6 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
       totalADCMedian_->Fill( intMed );
       totalADCIterMed_->Fill( intIterMed);
       totalADCPer25_->Fill( intPer25 );
-      if ( doNoiseAndSignal )
-      {
-         float intSignal = integrateADC(adcSignal, 0. );
-         totalADCSignal_->Fill( intSignal );
-         totalADCMedianDiff_->Fill( intMed - intSignal );
-         totalADCIterMedDiff_->Fill( intIterMed - intSignal );
-         totalADCPer25Diff_->Fill( intPer25 - intSignal );
-      }
   
       // ---
       // Make the gallery plot
@@ -682,7 +364,6 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
          if ( doGallery ) {
            for( int i =0; i<128; i++) {
              galACount_[currentGraph]->SetPoint(i,(double)i+1,(double)(adc[i]));
-             if(doNoiseAndSignal) galASignalCount_[currentGraph]->SetPoint(i,(double)i+1,(double)(adcSignal[i]));
            }
            galACount_[currentGraph]->SetPoint(128,150.,(double)medianOffset[APV]);
            galACount_[currentGraph]->SetPoint(129,150.,(double)per25Offset[APV]);
@@ -707,7 +388,6 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
          if ( doGallery ) {
            for( int i =0; i<128; i++) {
              galBCount_[currentGraph]->SetPoint(i,(double)i+1,(double)(adc[i]));
-             if(doNoiseAndSignal) galBSignalCount_[currentGraph]->SetPoint(i,(double)i+1,(double)(adcSignal[i]));
            }
            galBCount_[currentGraph]->SetPoint(128,150.,(double)medianOffset[APV]);
            galBCount_[currentGraph]->SetPoint(129,150.,(double)per25Offset[APV]);
@@ -732,7 +412,6 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
          if ( doGallery ) {
            for( int i =0; i<128; i++) {
              galDCount_[currentGraph]->SetPoint(i,(double)i+1,(double)(adc[i]));
-             if(doNoiseAndSignal) galDSignalCount_[currentGraph]->SetPoint(i,(double)i+1,(double)(adcSignal[i]));
            }
            galDCount_[currentGraph]->SetPoint(128,150.,(double)medianOffset[APV]);
            galDCount_[currentGraph]->SetPoint(129,150.,(double)per25Offset[APV]);
@@ -757,7 +436,6 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
          if ( doGallery ) {
            for( int i =0; i<128; i++) {
              galECount_[currentGraph]->SetPoint(i,(double)i+1,(double)(adc[i]));
-             if(doNoiseAndSignal) galESignalCount_[currentGraph]->SetPoint(i,(double)i+1,(double)(adcSignal[i]));
            }
            galECount_[currentGraph]->SetPoint(128,150.,(double)medianOffset[APV]);
            galECount_[currentGraph]->SetPoint(129,150.,(double)per25Offset[APV]);
@@ -784,7 +462,6 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   medianTotalClus_->Fill( medianTotClus );
   iterMedTotalClus_->Fill( iterMedTotClus );
   per25TotalClus_->Fill( per25TotClus );
-  if(doNoiseAndSignal) signalTotalClus_->Fill( signalTotClus );
 
 
 }
