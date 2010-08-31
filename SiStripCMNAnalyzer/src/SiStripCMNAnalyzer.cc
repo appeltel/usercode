@@ -13,7 +13,7 @@
 //
 // Original Author:  Eric Appelt
 //         Created:  Mon Jul 26 10:37:24 CDT 2010
-// $Id: SiStripCMNAnalyzer.cc,v 1.9 2010/08/31 13:59:46 edwenger Exp $
+// $Id: SiStripCMNAnalyzer.cc,v 1.10 2010/08/31 14:13:26 edwenger Exp $
 //
 //
 
@@ -378,8 +378,8 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
       }
 
       // gallery B
-      if ( (medianOffset[APV] >= 2 && medianOffset[APV] < 30) && // was 2-100
-           (per25Offset[APV] >= 2 && per25Offset[APV] < 30) &&   // was 2-100
+      if ( (medianOffset[APV] >= 2 && medianOffset[APV] < 100) && 
+           (per25Offset[APV] >= 2 && per25Offset[APV] < 100) && 
 	   (countClusters( medianClusterVec, APV) >= galleryClusterMin_))
       {
          int currentGraph = galBcount % 10;
