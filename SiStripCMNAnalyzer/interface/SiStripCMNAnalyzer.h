@@ -160,6 +160,10 @@ class SiStripCMNAnalyzer : public edm::EDAnalyzer {
       TGraph* galDCount_[10];
       TGraph* galECount_[10];
   
+      // In case of something like ZeroBias, one may want to set a minimum
+      // number of clusters before filling galleries
+      int galleryClusterMin_;
+
       // These graphs are really just storage for clusters for the APV25s graphed above.
       // This is a stupid way to do things and they should be replaced by nTuples
       // or something. I am doing this as a path of least resistance given my current knowledge of ROOT.
