@@ -10,10 +10,9 @@ def customiseMedian(process):
 
 
 ##############################################################################
-def customiseMedianAPVRestore(process):
+def customiseAPVRestore(process):
 
-    process.siStripZeroSuppression.Algorithms.CommonModeNoiseSubtractionMode=cms.string("MedianAPVRestore")
-    process.siStripZeroSuppression.storeCM = cms.bool(True)
+    process.siStripZeroSuppression.doAPVRestore = cms.bool(True)
 
     return process
 
