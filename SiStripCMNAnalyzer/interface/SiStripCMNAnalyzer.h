@@ -157,6 +157,7 @@ class SiStripCMNAnalyzer : public edm::EDAnalyzer {
 
       TGraph* galACount_[10];
       TGraph* galBCount_[10];
+      TGraph* galCCount_[10];
       TGraph* galDCount_[10];
       TGraph* galECount_[10];
   
@@ -174,6 +175,9 @@ class SiStripCMNAnalyzer : public edm::EDAnalyzer {
       TGraph* galBMedianClusters_[10];
       TGraph* galBPer25Clusters_[10]; 
       TGraph* galBIterMedClusters_[10]; 
+      TGraph* galCMedianClusters_[10];
+      TGraph* galCPer25Clusters_[10]; 
+      TGraph* galCIterMedClusters_[10]; 
       TGraph* galDMedianClusters_[10];
       TGraph* galDPer25Clusters_[10]; 
       TGraph* galDIterMedClusters_[10]; 
@@ -196,6 +200,7 @@ class SiStripCMNAnalyzer : public edm::EDAnalyzer {
 
       int galAcount;
       int galBcount;
+      int galCcount;
       int galDcount;
       int galEcount;
 

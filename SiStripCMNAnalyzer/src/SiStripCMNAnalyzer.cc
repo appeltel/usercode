@@ -13,7 +13,7 @@
 //
 // Original Author:  Eric Appelt
 //         Created:  Mon Jul 26 10:37:24 CDT 2010
-// $Id: SiStripCMNAnalyzer.cc,v 1.10 2010/08/31 14:13:26 edwenger Exp $
+// $Id: SiStripCMNAnalyzer.cc,v 1.11 2010/08/31 14:17:55 edwenger Exp $
 //
 //
 
@@ -98,6 +98,14 @@ SiStripCMNAnalyzer::SiStripCMNAnalyzer(const edm::ParameterSet& iConfig)
     galBIterMedClusters_[i]->SetName(Form("galBIterMedClusters%d",i));
     galBPer25Clusters_[i] = fs->make<TGraph>(128);
     galBPer25Clusters_[i]->SetName(Form("galBPer25Clusters%d",i));
+    galCCount_[i] = fs->make<TGraph>(131);
+    galCCount_[i]->SetName(Form("galCCount%d",i));
+    galCMedianClusters_[i] = fs->make<TGraph>(128);
+    galCMedianClusters_[i]->SetName(Form("galCMedianClusters%d",i));
+    galCIterMedClusters_[i] = fs->make<TGraph>(128);
+    galCIterMedClusters_[i]->SetName(Form("galCIterMedClusters%d",i));
+    galCPer25Clusters_[i] = fs->make<TGraph>(128);
+    galCPer25Clusters_[i]->SetName(Form("galCPer25Clusters%d",i));
     galDCount_[i] = fs->make<TGraph>(131);
     galDCount_[i]->SetName(Form("galDCount%d",i));
     galDMedianClusters_[i] = fs->make<TGraph>(128);
@@ -119,6 +127,7 @@ SiStripCMNAnalyzer::SiStripCMNAnalyzer(const edm::ParameterSet& iConfig)
 
   galAcount = 0;
   galBcount = 0;
+  galCcount = 0;
   galDcount = 0;
   galEcount = 0;
 
@@ -401,6 +410,32 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
            galBcount++;
          }
       }
+
+      // gallery C
+      if ( medianOffset[APV] < 1 && 
+           per25Offset[APV] < 1 && 
+	   (countClusters( medianClusterVec, APV) >= galleryClusterMin_))
+      {
+         int currentGraph = galCcount % 10;
+         bool doGallery = true;
+         if ( galCcount / 10 > 0 )
+           if ( gaussDistribution->fire(0.,1.) < galCcount / 10 )
+              doGallery = false;
+
+         if ( doGallery ) {
+           for( int i =0; i<128; i++) {
+             galCCount_[currentGraph]->SetPoint(i,(double)i+1,(double)(adc[i]));
+           }
+           galCCount_[currentGraph]->SetPoint(128,150.,(double)medianOffset[APV]);
+           galCCount_[currentGraph]->SetPoint(129,150.,(double)per25Offset[APV]);
+           galCCount_[currentGraph]->SetPoint(130,150.,(double)iterMedOffset[APV]);
+           makeClusterGraph( medianClusterVec, galCMedianClusters_[currentGraph], APV );
+           makeClusterGraph( per25ClusterVec, galCPer25Clusters_[currentGraph], APV );
+           makeClusterGraph( iterMedClusterVec, galCIterMedClusters_[currentGraph], APV );
+           galCcount++;
+         }
+    
+       }
 
       // gallery D
       if ( (medianOffset[APV] >= 160 ) &&
