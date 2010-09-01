@@ -5,7 +5,6 @@
 #include "RecoLocalTracker/SiStripZeroSuppression/interface/SiStripPedestalsSubtractor.h"
 #include "RecoLocalTracker/SiStripZeroSuppression/interface/SiStripFedZeroSuppression.h"
 #include "RecoLocalTracker/SiStripZeroSuppression/interface/MedianCMNSubtractor.h"
-#include "RecoLocalTracker/SiStripZeroSuppression/interface/MedianAPVRestoreCMNSubtractor.h"
 #include "RecoLocalTracker/SiStripZeroSuppression/interface/PercentileCMNSubtractor.h"
 #include "RecoLocalTracker/SiStripZeroSuppression/interface/IteratedMedianCMNSubtractor.h"
 #include "RecoLocalTracker/SiStripZeroSuppression/interface/FastLinearCMNSubtractor.h"
@@ -33,9 +32,6 @@ create_SubtractorCMN(const edm::ParameterSet& conf) {
   if ( mode == "Median")
     return std::auto_ptr<SiStripCommonModeNoiseSubtractor>( new MedianCMNSubtractor() );
 
-  if ( mode == "MedianAPVRestore")
-    return std::auto_ptr<SiStripCommonModeNoiseSubtractor>( new MedianAPVRestoreCMNSubtractor() );
-
   if ( mode == "Percentile") {
     double percentile = conf.getParameter<double>("Percentile");
     return std::auto_ptr<SiStripCommonModeNoiseSubtractor>( new PercentileCMNSubtractor(percentile) );
@@ -56,7 +52,7 @@ create_SubtractorCMN(const edm::ParameterSet& conf) {
   }
   
   throw cms::Exception("Unregistered Algorithm") 
-    << "SiStripCommonModeNoiseSubtractor possibilities: (Median, MedianAPVRestore, Percentile, IteratedMedian, FastLinear, TT6)";
+    << "SiStripCommonModeNoiseSubtractor possibilities: (Median, Percentile, IteratedMedian, FastLinear, TT6)";
 }
 
 std::auto_ptr<SiStripFedZeroSuppression> SiStripRawProcessingFactory::
