@@ -12,5 +12,6 @@ cp SiStripRawProcessingAlgorithms.h $CMSSW_BASE/src/$dir/interface
 cp SiStripRawProcessingFactory.cc $CMSSW_BASE/src/$dir/src
 cp SiStripAPVRestorer.cc $CMSSW_BASE/src/$dir/src
 cp SiStripZeroSuppression.cc $CMSSW_BASE/src/$dir/plugins
+cp SiStripZeroSuppression.h $CMSSW_BASE/src/$dir/plugins
 cp customiseCMN.py $CMSSW_BASE/src/$dir/python
 cp SiStripZeroSuppression_cfi.py $CMSSW_BASE/src/$dir/python
