@@ -15,4 +15,3 @@ cp SiStripZeroSuppression.cc $CMSSW_BASE/src/$dir/plugins
 cp SiStripZeroSuppression.h $CMSSW_BASE/src/$dir/plugins
 cp customiseCMN.py $CMSSW_BASE/src/$dir/python
 cp SiStripZeroSuppression_cfi.py $CMSSW_BASE/src/$dir/python
-cp DeafultAlgorithms_cff.py $CMSSW_BASE/src/$dir/python
