@@ -33,20 +33,22 @@ inspect_(const uint32_t& detId,std::vector<T>& digis){
 
   for( uint16_t APV=0; APV< digis.size()/128; ++APV)
   {
-    int zeroCount = 0; 
+    int zeroCount = 0, qualityCount = 0; 
     for (uint16_t istrip=APV*128; istrip<(APV+1)*128; ++istrip)
     {
       fs = digis.begin() + istrip;
-      if ( !qualityHandle->IsStripBad(detQualityRange,istrip) && (int) *fs < 1 )
-        zeroCount++;
+      if ( !qualityHandle->IsStripBad(detQualityRange,istrip) )
+      {
+        qualityCount++; 
+        if ( (int) *fs < 1 ) zeroCount++;
+      }
     }
 
-    if( zeroCount > restoreThreshold_ * 128 ) 
-    {
-       apvKills.push_back( true );
-    } else {
-       apvKills.push_back( false );
-    }
+    if( zeroCount > restoreThreshold_ * qualityCount ) 
+      apvKills.push_back( true );
+    else 
+      apvKills.push_back( false );
+    
   }
 }
 
@@ -58,7 +60,6 @@ restore_( std::vector<T>& digis ){
   typename std::vector<T>::iterator  
   strip( digis.begin() ), 
   endAPV;
-
 
   for( uint16_t APV=0; APV< digis.size()/128; ++APV)
   {
