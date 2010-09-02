@@ -68,7 +68,8 @@ create_Suppressor(const edm::ParameterSet& conf) {
 
 std::auto_ptr<SiStripAPVRestorer> SiStripRawProcessingFactory::
 create_Restorer( const edm::ParameterSet& conf) {
-  double restoreThreshold = conf.getParameter<double>("restoreThreshold");
+  double restoreThreshold = 999.;
+  if( conf.exists("restoreThreshold") ) restoreThreshold = conf.getParameter<double>("restoreThreshold");
   return std::auto_ptr<SiStripAPVRestorer>( new SiStripAPVRestorer( restoreThreshold ));
 }
 
