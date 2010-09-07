@@ -13,7 +13,7 @@
 //
 // Original Author:  Eric Appelt
 //         Created:  Mon Jul 26 10:37:24 CDT 2010
-// $Id: SiStripCMNAnalyzer.cc,v 1.11 2010/08/31 14:17:55 edwenger Exp $
+// $Id: SiStripCMNAnalyzer.cc,v 1.12 2010/09/01 11:06:05 appeltel Exp $
 //
 //
 
@@ -80,49 +80,19 @@ SiStripCMNAnalyzer::SiStripCMNAnalyzer(const edm::ParameterSet& iConfig)
   per25APVClusNum_ = fs->make<TH1F>("per25APVClusNum","Number of Clusters on an APV25 - 25th Percentile CMN Subtraction",128,0.,128.);
   
 
-  for( int i = 0; i<10; i++)
-  {
-    galACount_[i] = fs->make<TGraph>(131);
-    galACount_[i]->SetName(Form("galACount%d",i));
-    galAMedianClusters_[i] = fs->make<TGraph>(128);
-    galAMedianClusters_[i]->SetName(Form("galAMedianClusters%d",i));
-    galAIterMedClusters_[i] = fs->make<TGraph>(128);
-    galAIterMedClusters_[i]->SetName(Form("galAIterMedClusters%d",i));
-    galAPer25Clusters_[i] = fs->make<TGraph>(128);
-    galAPer25Clusters_[i]->SetName(Form("galAPer25Clusters%d",i));
-    galBCount_[i] = fs->make<TGraph>(131);
-    galBCount_[i]->SetName(Form("galBCount%d",i));
-    galBMedianClusters_[i] = fs->make<TGraph>(128);
-    galBMedianClusters_[i]->SetName(Form("galBMedianClusters%d",i));
-    galBIterMedClusters_[i] = fs->make<TGraph>(128);
-    galBIterMedClusters_[i]->SetName(Form("galBIterMedClusters%d",i));
-    galBPer25Clusters_[i] = fs->make<TGraph>(128);
-    galBPer25Clusters_[i]->SetName(Form("galBPer25Clusters%d",i));
-    galCCount_[i] = fs->make<TGraph>(131);
-    galCCount_[i]->SetName(Form("galCCount%d",i));
-    galCMedianClusters_[i] = fs->make<TGraph>(128);
-    galCMedianClusters_[i]->SetName(Form("galCMedianClusters%d",i));
-    galCIterMedClusters_[i] = fs->make<TGraph>(128);
-    galCIterMedClusters_[i]->SetName(Form("galCIterMedClusters%d",i));
-    galCPer25Clusters_[i] = fs->make<TGraph>(128);
-    galCPer25Clusters_[i]->SetName(Form("galCPer25Clusters%d",i));
-    galDCount_[i] = fs->make<TGraph>(131);
-    galDCount_[i]->SetName(Form("galDCount%d",i));
-    galDMedianClusters_[i] = fs->make<TGraph>(128);
-    galDMedianClusters_[i]->SetName(Form("galDMedianClusters%d",i));
-    galDIterMedClusters_[i] = fs->make<TGraph>(128);
-    galDIterMedClusters_[i]->SetName(Form("galDIterMedClusters%d",i));
-    galDPer25Clusters_[i] = fs->make<TGraph>(128);
-    galDPer25Clusters_[i]->SetName(Form("galDPer25Clusters%d",i));
-    galECount_[i] = fs->make<TGraph>(131);
-    galECount_[i]->SetName(Form("galECount%d",i));
-    galEMedianClusters_[i] = fs->make<TGraph>(128);
-    galEMedianClusters_[i]->SetName(Form("galEMedianClusters%d",i));
-    galEIterMedClusters_[i] = fs->make<TGraph>(128);
-    galEIterMedClusters_[i]->SetName(Form("galEIterMedClusters%d",i));
-    galEPer25Clusters_[i] = fs->make<TGraph>(128);
-    galEPer25Clusters_[i]->SetName(Form("galEPer25Clusters%d",i));
-  }
+  TString leafstring;
+  leafstring = "adc[128]/I:clustersMedian[128]/I:clustersIterMed[128]/I:clustersPer25[128]/I:medianOffset/D:iterMedOffset/D:per25Offset/D:event/I:lumi/I:run/I:detID/i:apv/I";
+
+  galleryA_ = fs->make<TTree>("galleryATree","galleryATree");
+  galleryA_->Branch("apvReadouts",&tmpAPV, leafstring.Data()); 
+  galleryB_ = fs->make<TTree>("galleryBTree","galleryBTree");
+  galleryB_->Branch("apvReadouts",&tmpAPV, leafstring.Data()); 
+  galleryC_ = fs->make<TTree>("galleryCTree","galleryCTree");
+  galleryC_->Branch("apvReadouts",&tmpAPV, leafstring.Data()); 
+  galleryD_ = fs->make<TTree>("galleryDTree","galleryDTree");
+  galleryD_->Branch("apvReadouts",&tmpAPV, leafstring.Data()); 
+  galleryE_ = fs->make<TTree>("galleryETree","galleryETree");
+  galleryE_->Branch("apvReadouts",&tmpAPV, leafstring.Data()); 
 
 
   galAcount = 0;
@@ -187,6 +157,9 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
      quality_cache_id = q_cache_id;
    }
 
+   int eventNumber = iEvent.id().event();
+   int lumiNumber = iEvent.id().luminosityBlock();
+   int runNumber = iEvent.id().run();
 
    int medianTotClus =0;
    int iterMedTotClus =0;
@@ -373,15 +346,18 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
               doGallery = false;
        
          if ( doGallery ) {
-           for( int i =0; i<128; i++) {
-             galACount_[currentGraph]->SetPoint(i,(double)i+1,(double)(adc[i]));
-           }
-           galACount_[currentGraph]->SetPoint(128,150.,(double)medianOffset[APV]);
-           galACount_[currentGraph]->SetPoint(129,150.,(double)per25Offset[APV]);
-           galACount_[currentGraph]->SetPoint(130,150.,(double)iterMedOffset[APV]);
-           makeClusterGraph( medianClusterVec, galAMedianClusters_[currentGraph], APV );
-           makeClusterGraph( per25ClusterVec, galAPer25Clusters_[currentGraph], APV );
-           makeClusterGraph( iterMedClusterVec, galAIterMedClusters_[currentGraph], APV );
+           for ( int i = 0; i<128; i++) galA_[currentGraph].adc[i] = adc[i];
+           galA_[currentGraph].medianOffset = (double)medianOffset[APV];
+           galA_[currentGraph].iterMedOffset = (double)iterMedOffset[APV];
+           galA_[currentGraph].per25Offset = (double)per25Offset[APV];
+           fillClusterValues( medianClusterVec, galA_[currentGraph].clustersMedian, APV );
+           fillClusterValues( per25ClusterVec, galA_[currentGraph].clustersPer25, APV );
+           fillClusterValues( iterMedClusterVec, galA_[currentGraph].clustersIterMed, APV );
+           galA_[currentGraph].event = eventNumber;
+           galA_[currentGraph].lumi = lumiNumber;
+           galA_[currentGraph].run = runNumber;
+           galA_[currentGraph].detID = rawDigis->detId();
+           galA_[currentGraph].apv = APV; 
            galAcount++;
          }
       }
@@ -398,15 +374,18 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
               doGallery = false;
 
          if ( doGallery ) {
-           for( int i =0; i<128; i++) {
-             galBCount_[currentGraph]->SetPoint(i,(double)i+1,(double)(adc[i]));
-           }
-           galBCount_[currentGraph]->SetPoint(128,150.,(double)medianOffset[APV]);
-           galBCount_[currentGraph]->SetPoint(129,150.,(double)per25Offset[APV]);
-           galBCount_[currentGraph]->SetPoint(130,150.,(double)iterMedOffset[APV]);
-           makeClusterGraph( medianClusterVec, galBMedianClusters_[currentGraph], APV );
-           makeClusterGraph( per25ClusterVec, galBPer25Clusters_[currentGraph], APV );
-           makeClusterGraph( iterMedClusterVec, galBIterMedClusters_[currentGraph], APV );
+           for ( int i = 0; i<128; i++) galB_[currentGraph].adc[i] = adc[i];
+           galB_[currentGraph].medianOffset = (double)medianOffset[APV];
+           galB_[currentGraph].iterMedOffset = (double)iterMedOffset[APV];
+           galB_[currentGraph].per25Offset = (double)per25Offset[APV];
+           fillClusterValues( medianClusterVec, galB_[currentGraph].clustersMedian, APV );
+           fillClusterValues( per25ClusterVec, galB_[currentGraph].clustersPer25, APV );
+           fillClusterValues( iterMedClusterVec, galB_[currentGraph].clustersIterMed, APV );
+           galB_[currentGraph].event = eventNumber;
+           galB_[currentGraph].lumi = lumiNumber;
+           galB_[currentGraph].run = runNumber;
+           galB_[currentGraph].detID = rawDigis->detId();
+           galB_[currentGraph].apv = APV;
            galBcount++;
          }
       }
@@ -423,15 +402,18 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
               doGallery = false;
 
          if ( doGallery ) {
-           for( int i =0; i<128; i++) {
-             galCCount_[currentGraph]->SetPoint(i,(double)i+1,(double)(adc[i]));
-           }
-           galCCount_[currentGraph]->SetPoint(128,150.,(double)medianOffset[APV]);
-           galCCount_[currentGraph]->SetPoint(129,150.,(double)per25Offset[APV]);
-           galCCount_[currentGraph]->SetPoint(130,150.,(double)iterMedOffset[APV]);
-           makeClusterGraph( medianClusterVec, galCMedianClusters_[currentGraph], APV );
-           makeClusterGraph( per25ClusterVec, galCPer25Clusters_[currentGraph], APV );
-           makeClusterGraph( iterMedClusterVec, galCIterMedClusters_[currentGraph], APV );
+           for ( int i = 0; i<128; i++) galC_[currentGraph].adc[i] = adc[i];
+           galC_[currentGraph].medianOffset = (double)medianOffset[APV];
+           galC_[currentGraph].iterMedOffset = (double)iterMedOffset[APV];
+           galC_[currentGraph].per25Offset = (double)per25Offset[APV];
+           fillClusterValues( medianClusterVec, galC_[currentGraph].clustersMedian, APV );
+           fillClusterValues( per25ClusterVec, galC_[currentGraph].clustersPer25, APV );
+           fillClusterValues( iterMedClusterVec, galC_[currentGraph].clustersIterMed, APV );
+           galC_[currentGraph].event = eventNumber;
+           galC_[currentGraph].lumi = lumiNumber;
+           galC_[currentGraph].run = runNumber;
+           galC_[currentGraph].detID = rawDigis->detId();
+           galC_[currentGraph].apv = APV;
            galCcount++;
          }
     
@@ -449,15 +431,18 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
               doGallery = false;
 
          if ( doGallery ) {
-           for( int i =0; i<128; i++) {
-             galDCount_[currentGraph]->SetPoint(i,(double)i+1,(double)(adc[i]));
-           }
-           galDCount_[currentGraph]->SetPoint(128,150.,(double)medianOffset[APV]);
-           galDCount_[currentGraph]->SetPoint(129,150.,(double)per25Offset[APV]);
-           galDCount_[currentGraph]->SetPoint(130,150.,(double)iterMedOffset[APV]);
-           makeClusterGraph( medianClusterVec, galDMedianClusters_[currentGraph], APV );
-           makeClusterGraph( per25ClusterVec, galDPer25Clusters_[currentGraph], APV );
-           makeClusterGraph( iterMedClusterVec, galDIterMedClusters_[currentGraph], APV );
+           for ( int i = 0; i<128; i++) galD_[currentGraph].adc[i] = adc[i];
+           galD_[currentGraph].medianOffset = (double)medianOffset[APV];
+           galD_[currentGraph].iterMedOffset = (double)iterMedOffset[APV];
+           galD_[currentGraph].per25Offset = (double)per25Offset[APV];
+           fillClusterValues( medianClusterVec, galD_[currentGraph].clustersMedian, APV );
+           fillClusterValues( per25ClusterVec, galD_[currentGraph].clustersPer25, APV );
+           fillClusterValues( iterMedClusterVec, galD_[currentGraph].clustersIterMed, APV );
+           galD_[currentGraph].event = eventNumber;
+           galD_[currentGraph].lumi = lumiNumber;
+           galD_[currentGraph].run = runNumber;
+           galD_[currentGraph].detID = rawDigis->detId();
+           galD_[currentGraph].apv = APV;
            galDcount++;
          }
       }
@@ -474,15 +459,18 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
               doGallery = false;
 
          if ( doGallery ) {
-           for( int i =0; i<128; i++) {
-             galECount_[currentGraph]->SetPoint(i,(double)i+1,(double)(adc[i]));
-           }
-           galECount_[currentGraph]->SetPoint(128,150.,(double)medianOffset[APV]);
-           galECount_[currentGraph]->SetPoint(129,150.,(double)per25Offset[APV]);
-           galECount_[currentGraph]->SetPoint(130,150.,(double)iterMedOffset[APV]);
-           makeClusterGraph( medianClusterVec, galEMedianClusters_[currentGraph], APV );
-           makeClusterGraph( per25ClusterVec, galEPer25Clusters_[currentGraph], APV );
-           makeClusterGraph( iterMedClusterVec, galEIterMedClusters_[currentGraph], APV );
+           for ( int i = 0; i<128; i++) galE_[currentGraph].adc[i] = adc[i];
+           galE_[currentGraph].medianOffset = (double)medianOffset[APV];
+           galE_[currentGraph].iterMedOffset = (double)iterMedOffset[APV];
+           galE_[currentGraph].per25Offset = (double)per25Offset[APV];
+           fillClusterValues( medianClusterVec, galE_[currentGraph].clustersMedian, APV );
+           fillClusterValues( per25ClusterVec, galE_[currentGraph].clustersPer25, APV );
+           fillClusterValues( iterMedClusterVec, galE_[currentGraph].clustersIterMed, APV );
+           galE_[currentGraph].event = eventNumber;
+           galE_[currentGraph].lumi = lumiNumber;
+           galE_[currentGraph].run = runNumber;
+           galE_[currentGraph].detID = rawDigis->detId();
+           galE_[currentGraph].apv = APV;
            galEcount++;
          }
       }
@@ -514,6 +502,21 @@ SiStripCMNAnalyzer::beginJob()
 
 void 
 SiStripCMNAnalyzer::endJob() {
+
+  for( int i = 0; i< 10; i++)
+  {
+    copyAPVReadout( galA_[i], tmpAPV );
+    galleryA_->Fill();
+    copyAPVReadout( galB_[i], tmpAPV );
+    galleryB_->Fill();
+    copyAPVReadout( galC_[i], tmpAPV );
+    galleryC_->Fill();
+    copyAPVReadout( galD_[i], tmpAPV );
+    galleryD_->Fill();
+    copyAPVReadout( galE_[i], tmpAPV );
+    galleryE_->Fill();
+  }
+
 }
 
 
@@ -720,14 +723,16 @@ int SiStripCMNAnalyzer::countClusters( edmNew::DetSetVector<SiStripCluster>& clu
 }
 
 
-void SiStripCMNAnalyzer::makeClusterGraph( edmNew::DetSetVector<SiStripCluster>& clusters, TGraph * graph, int APV )
+void SiStripCMNAnalyzer::fillClusterValues( edmNew::DetSetVector<SiStripCluster>& clusters, int * array, int APV )
 {
+
+   // Note: Integer array should be from a apvReadout_t struct and must contain at least 128 values!
+
    bool firstDet = true;
    int position = 0;
  
    // zero out the old points
-   for(int i=0 ; i < 128; i++)
-     graph->SetPoint( i, 0., 0. );
+   for(int i=0 ; i < 128; i++) array[i] = 0;
 
    edmNew::DetSetVector<SiStripCluster>::const_iterator it = clusters.begin();
    for ( ; it != clusters.end(); ++it )
@@ -745,13 +750,34 @@ void SiStripCMNAnalyzer::makeClusterGraph( edmNew::DetSetVector<SiStripCluster>&
        if( ( firststrip >= APV*128 && firststrip < (APV+1)*128 ) ||
            ( laststrip >= APV*128 && laststrip < (APV+1)*128 )   )
        {
-         graph->SetPoint( position, firststrip - APV*128, laststrip - APV*128 );
-         position++;
+         array[position] = firststrip - APV*128;
+         array[position+1] = laststrip - APV*128;
+         position += 2;
        }
      }
 
    }
 }
+
+void SiStripCMNAnalyzer::copyAPVReadout( apvReadout_t & src, apvReadout_t & dest )
+{
+  for( int i = 0; i < 128; i++)
+  {
+    dest.adc[i] = src.adc[i];
+    dest.clustersMedian[i] = src.clustersMedian[i];
+    dest.clustersIterMed[i] = src.clustersIterMed[i];
+    dest.clustersPer25[i] = src.clustersPer25[i];
+  }
+  dest.medianOffset = src.medianOffset;
+  dest.iterMedOffset = src.iterMedOffset;
+  dest.per25Offset = src.per25Offset;
+  dest.event = src.event;
+  dest.lumi = src.lumi;
+  dest.run = src.run;
+  dest.detID = src.detID;
+  dest.apv = src.apv;
+}  
+
 
 //define this as a plug-in
 DEFINE_FWK_MODULE(SiStripCMNAnalyzer);

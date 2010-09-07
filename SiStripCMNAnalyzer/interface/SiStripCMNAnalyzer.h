@@ -46,9 +46,30 @@
 #include <TH2.h>
 #include <TString.h>
 #include <TGraph.h>
+#include <TTree.h>
 
 #include "FWCore/ServiceRegistry/interface/Service.h"
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
+
+//
+// APV readout structure for Gallery plots
+//
+
+typedef struct 
+{
+  int adc[128];
+  int clustersMedian[128];
+  int clustersIterMed[128];
+  int clustersPer25[128];
+  double medianOffset;
+  double iterMedOffset;
+  double per25Offset;
+  int event;
+  int lumi;
+  int run;
+  uint32_t detID;
+  int apv; 
+} apvReadout_t;
 
 
 //
@@ -84,10 +105,9 @@ class SiStripCMNAnalyzer : public edm::EDAnalyzer {
 
       void processRaw(const edm::InputTag&, const edm::DetSetVector<SiStripRawDigi>&, std::vector<edm::DetSet<SiStripDigi> >& );
 
-      // As a dumb hack, clusters for the gallery plot are stored in a TGraph with  
-      // (x,y) = (first strip, last strip) or (0,0) if there is no cluster.
+      void copyAPVReadout( apvReadout_t& src, apvReadout_t& dest );
 
-      void makeClusterGraph( edmNew::DetSetVector<SiStripCluster>& clusters, TGraph * graph, int APV );
+      void fillClusterValues( edmNew::DetSetVector<SiStripCluster>& clusters, int * array, int APV );
 
       void fillClusterWidths( edmNew::DetSetVector<SiStripCluster>& clusters, TH1F * hist, int APV );
       int countClusters( edmNew::DetSetVector<SiStripCluster>&clusters, int APV);
@@ -153,38 +173,25 @@ class SiStripCMNAnalyzer : public edm::EDAnalyzer {
  
       //
       // For each gallery there  are displays of ten interesting APV25s, 
-      // with the median and 25th in the 129th and 130th points.
 
-      TGraph* galACount_[10];
-      TGraph* galBCount_[10];
-      TGraph* galCCount_[10];
-      TGraph* galDCount_[10];
-      TGraph* galECount_[10];
+      apvReadout_t galA_[10];
+      apvReadout_t galB_[10];
+      apvReadout_t galC_[10];
+      apvReadout_t galD_[10];
+      apvReadout_t galE_[10];
   
+      TTree* galleryA_;
+      TTree* galleryB_;
+      TTree* galleryC_;
+      TTree* galleryD_;
+      TTree* galleryE_;
+
+      apvReadout_t tmpAPV;
+
       // In case of something like ZeroBias, one may want to set a minimum
       // number of clusters before filling galleries
       int galleryClusterMin_;
 
-      // These graphs are really just storage for clusters for the APV25s graphed above.
-      // This is a stupid way to do things and they should be replaced by nTuples
-      // or something. I am doing this as a path of least resistance given my current knowledge of ROOT.
-
-      TGraph* galAMedianClusters_[10];
-      TGraph* galAPer25Clusters_[10]; 
-      TGraph* galAIterMedClusters_[10]; 
-      TGraph* galBMedianClusters_[10];
-      TGraph* galBPer25Clusters_[10]; 
-      TGraph* galBIterMedClusters_[10]; 
-      TGraph* galCMedianClusters_[10];
-      TGraph* galCPer25Clusters_[10]; 
-      TGraph* galCIterMedClusters_[10]; 
-      TGraph* galDMedianClusters_[10];
-      TGraph* galDPer25Clusters_[10]; 
-      TGraph* galDIterMedClusters_[10]; 
-      TGraph* galEMedianClusters_[10];
-      TGraph* galEPer25Clusters_[10]; 
-      TGraph* galEIterMedClusters_[10]; 
- 
       // Histograms of integrated ADC  on each APV
 
       TH1F* totalADCMedian_;
