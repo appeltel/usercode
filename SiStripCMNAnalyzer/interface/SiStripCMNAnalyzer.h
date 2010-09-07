@@ -112,6 +112,8 @@ class SiStripCMNAnalyzer : public edm::EDAnalyzer {
       void fillClusterWidths( edmNew::DetSetVector<SiStripCluster>& clusters, TH1F * hist, int APV );
       int countClusters( edmNew::DetSetVector<SiStripCluster>&clusters, int APV);
 
+      bool galleryCuts( double median, double per25, int gal );
+
       std::auto_ptr<SiStripRawProcessingAlgorithms> algorithms;
       std::auto_ptr<StripClusterizerAlgorithm> clusterAlgorithm;
 
@@ -174,11 +176,7 @@ class SiStripCMNAnalyzer : public edm::EDAnalyzer {
       //
       // For each gallery there  are displays of ten interesting APV25s, 
 
-      apvReadout_t galA_[10];
-      apvReadout_t galB_[10];
-      apvReadout_t galC_[10];
-      apvReadout_t galD_[10];
-      apvReadout_t galE_[10];
+      apvReadout_t gal_[5][10];
   
       TTree* galleryA_;
       TTree* galleryB_;
@@ -205,11 +203,7 @@ class SiStripCMNAnalyzer : public edm::EDAnalyzer {
       TH1F* iterMedTotalClus_;
 
 
-      int galAcount;
-      int galBcount;
-      int galCcount;
-      int galDcount;
-      int galEcount;
+      int galCount[5];
 
 };
 

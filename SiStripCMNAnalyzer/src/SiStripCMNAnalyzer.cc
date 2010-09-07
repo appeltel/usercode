@@ -13,7 +13,7 @@
 //
 // Original Author:  Eric Appelt
 //         Created:  Mon Jul 26 10:37:24 CDT 2010
-// $Id: SiStripCMNAnalyzer.cc,v 1.12 2010/09/01 11:06:05 appeltel Exp $
+// $Id: SiStripCMNAnalyzer.cc,v 1.13 2010/09/07 09:45:32 appeltel Exp $
 //
 //
 
@@ -94,12 +94,7 @@ SiStripCMNAnalyzer::SiStripCMNAnalyzer(const edm::ParameterSet& iConfig)
   galleryE_ = fs->make<TTree>("galleryETree","galleryETree");
   galleryE_->Branch("apvReadouts",&tmpAPV, leafstring.Data()); 
 
-
-  galAcount = 0;
-  galBcount = 0;
-  galCcount = 0;
-  galDcount = 0;
-  galEcount = 0;
+  for( int i = 0; i < 5; i++) galCount[i] = 0;
 
   edm::Service<edm::RandomNumberGenerator> rng;
   if ( ! rng.isAvailable()) {
@@ -331,154 +326,39 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
       totalADCPer25_->Fill( intPer25 );
   
       // ---
-      // Make the gallery plot
+      // Make the gallery plots
       //
-   
-      // gallery A
-      if ( (medianOffset[APV] >= 116 && medianOffset[APV] < 140) && 
-           (per25Offset[APV] >= 116 && per25Offset[APV] < 140) &&
-	   (countClusters( medianClusterVec, APV) >= galleryClusterMin_))
+  
+      for ( int galNum = 0; galNum < 5; galNum++ )
       {
-         int currentGraph = galAcount % 10;
-         bool doGallery = true;
-         if ( galAcount / 10 > 0 )
-           if ( gaussDistribution->fire(0.,1.) < galAcount / 10 )
-              doGallery = false;
-       
-         if ( doGallery ) {
-           for ( int i = 0; i<128; i++) galA_[currentGraph].adc[i] = adc[i];
-           galA_[currentGraph].medianOffset = (double)medianOffset[APV];
-           galA_[currentGraph].iterMedOffset = (double)iterMedOffset[APV];
-           galA_[currentGraph].per25Offset = (double)per25Offset[APV];
-           fillClusterValues( medianClusterVec, galA_[currentGraph].clustersMedian, APV );
-           fillClusterValues( per25ClusterVec, galA_[currentGraph].clustersPer25, APV );
-           fillClusterValues( iterMedClusterVec, galA_[currentGraph].clustersIterMed, APV );
-           galA_[currentGraph].event = eventNumber;
-           galA_[currentGraph].lumi = lumiNumber;
-           galA_[currentGraph].run = runNumber;
-           galA_[currentGraph].detID = rawDigis->detId();
-           galA_[currentGraph].apv = APV; 
-           galAcount++;
-         }
+        if ( galleryCuts( medianOffset[APV], per25Offset[APV], galNum ) )
+        {
+          int currentGraph = galCount[galNum] % 10;
+          bool doGallery = true;
+          if ( galCount[galNum] / 10 > 0 )
+            if ( gaussDistribution->fire(0.,1.) < galCount[galNum] / 10 )
+               doGallery = false;
+
+          if ( doGallery ) {
+            for ( int i = 0; i<128; i++) gal_[galNum][currentGraph].adc[i] = adc[i];
+            gal_[galNum][currentGraph].medianOffset = (double)medianOffset[APV];
+            gal_[galNum][currentGraph].iterMedOffset = (double)iterMedOffset[APV];
+            gal_[galNum][currentGraph].per25Offset = (double)per25Offset[APV];
+            fillClusterValues( medianClusterVec, gal_[galNum][currentGraph].clustersMedian, APV );
+            fillClusterValues( per25ClusterVec, gal_[galNum][currentGraph].clustersPer25, APV );
+            fillClusterValues( iterMedClusterVec, gal_[galNum][currentGraph].clustersIterMed, APV );
+            gal_[galNum][currentGraph].event = eventNumber;
+            gal_[galNum][currentGraph].lumi = lumiNumber;
+            gal_[galNum][currentGraph].run = runNumber;
+            gal_[galNum][currentGraph].detID = rawDigis->detId();
+            gal_[galNum][currentGraph].apv = APV;
+            galCount[galNum]++;
+          }
+        }
+
       }
-
-      // gallery B
-      if ( (medianOffset[APV] >= 2 && medianOffset[APV] < 100) && 
-           (per25Offset[APV] >= 2 && per25Offset[APV] < 100) && 
-	   (countClusters( medianClusterVec, APV) >= galleryClusterMin_))
-      {
-         int currentGraph = galBcount % 10;
-         bool doGallery = true;
-         if ( galBcount / 10 > 0 )
-           if ( gaussDistribution->fire(0.,1.) < galBcount / 10 )
-              doGallery = false;
-
-         if ( doGallery ) {
-           for ( int i = 0; i<128; i++) galB_[currentGraph].adc[i] = adc[i];
-           galB_[currentGraph].medianOffset = (double)medianOffset[APV];
-           galB_[currentGraph].iterMedOffset = (double)iterMedOffset[APV];
-           galB_[currentGraph].per25Offset = (double)per25Offset[APV];
-           fillClusterValues( medianClusterVec, galB_[currentGraph].clustersMedian, APV );
-           fillClusterValues( per25ClusterVec, galB_[currentGraph].clustersPer25, APV );
-           fillClusterValues( iterMedClusterVec, galB_[currentGraph].clustersIterMed, APV );
-           galB_[currentGraph].event = eventNumber;
-           galB_[currentGraph].lumi = lumiNumber;
-           galB_[currentGraph].run = runNumber;
-           galB_[currentGraph].detID = rawDigis->detId();
-           galB_[currentGraph].apv = APV;
-           galBcount++;
-         }
-      }
-
-      // gallery C
-      if ( medianOffset[APV] < 1 && 
-           per25Offset[APV] < 1 && 
-	   (countClusters( medianClusterVec, APV) >= galleryClusterMin_))
-      {
-         int currentGraph = galCcount % 10;
-         bool doGallery = true;
-         if ( galCcount / 10 > 0 )
-           if ( gaussDistribution->fire(0.,1.) < galCcount / 10 )
-              doGallery = false;
-
-         if ( doGallery ) {
-           for ( int i = 0; i<128; i++) galC_[currentGraph].adc[i] = adc[i];
-           galC_[currentGraph].medianOffset = (double)medianOffset[APV];
-           galC_[currentGraph].iterMedOffset = (double)iterMedOffset[APV];
-           galC_[currentGraph].per25Offset = (double)per25Offset[APV];
-           fillClusterValues( medianClusterVec, galC_[currentGraph].clustersMedian, APV );
-           fillClusterValues( per25ClusterVec, galC_[currentGraph].clustersPer25, APV );
-           fillClusterValues( iterMedClusterVec, galC_[currentGraph].clustersIterMed, APV );
-           galC_[currentGraph].event = eventNumber;
-           galC_[currentGraph].lumi = lumiNumber;
-           galC_[currentGraph].run = runNumber;
-           galC_[currentGraph].detID = rawDigis->detId();
-           galC_[currentGraph].apv = APV;
-           galCcount++;
-         }
-    
-       }
-
-      // gallery D
-      if ( (medianOffset[APV] >= 160 ) &&
-           (per25Offset[APV] >= 160 ) &&
-	   (countClusters( medianClusterVec, APV) >= galleryClusterMin_))
-      {
-         int currentGraph = galDcount % 10;
-         bool doGallery = true;
-         if ( galDcount / 10 > 0 )
-           if ( gaussDistribution->fire(0.,1.) < galDcount / 10 )
-              doGallery = false;
-
-         if ( doGallery ) {
-           for ( int i = 0; i<128; i++) galD_[currentGraph].adc[i] = adc[i];
-           galD_[currentGraph].medianOffset = (double)medianOffset[APV];
-           galD_[currentGraph].iterMedOffset = (double)iterMedOffset[APV];
-           galD_[currentGraph].per25Offset = (double)per25Offset[APV];
-           fillClusterValues( medianClusterVec, galD_[currentGraph].clustersMedian, APV );
-           fillClusterValues( per25ClusterVec, galD_[currentGraph].clustersPer25, APV );
-           fillClusterValues( iterMedClusterVec, galD_[currentGraph].clustersIterMed, APV );
-           galD_[currentGraph].event = eventNumber;
-           galD_[currentGraph].lumi = lumiNumber;
-           galD_[currentGraph].run = runNumber;
-           galD_[currentGraph].detID = rawDigis->detId();
-           galD_[currentGraph].apv = APV;
-           galDcount++;
-         }
-      }
-
-      // gallery E
-      if ( (medianOffset[APV] >= 160) &&
-           (per25Offset[APV] >= 116 && per25Offset[APV] < 140) &&
-	   (countClusters( medianClusterVec, APV) >= galleryClusterMin_))
-      {
-         int currentGraph = galEcount % 10;
-         bool doGallery = true;
-         if ( galEcount / 10 > 0 )
-           if ( gaussDistribution->fire(0.,1.) < galEcount / 10 )
-              doGallery = false;
-
-         if ( doGallery ) {
-           for ( int i = 0; i<128; i++) galE_[currentGraph].adc[i] = adc[i];
-           galE_[currentGraph].medianOffset = (double)medianOffset[APV];
-           galE_[currentGraph].iterMedOffset = (double)iterMedOffset[APV];
-           galE_[currentGraph].per25Offset = (double)per25Offset[APV];
-           fillClusterValues( medianClusterVec, galE_[currentGraph].clustersMedian, APV );
-           fillClusterValues( per25ClusterVec, galE_[currentGraph].clustersPer25, APV );
-           fillClusterValues( iterMedClusterVec, galE_[currentGraph].clustersIterMed, APV );
-           galE_[currentGraph].event = eventNumber;
-           galE_[currentGraph].lumi = lumiNumber;
-           galE_[currentGraph].run = runNumber;
-           galE_[currentGraph].detID = rawDigis->detId();
-           galE_[currentGraph].apv = APV;
-           galEcount++;
-         }
-      }
-
 
     }  // END HISTOGRAMMING LOOP OVER APVS IN THE MODULE
-    
-
 
   } // END LOOP OVER MODULES
 
@@ -505,15 +385,15 @@ SiStripCMNAnalyzer::endJob() {
 
   for( int i = 0; i< 10; i++)
   {
-    copyAPVReadout( galA_[i], tmpAPV );
+    copyAPVReadout( gal_[0][i], tmpAPV );
     galleryA_->Fill();
-    copyAPVReadout( galB_[i], tmpAPV );
+    copyAPVReadout( gal_[1][i], tmpAPV );
     galleryB_->Fill();
-    copyAPVReadout( galC_[i], tmpAPV );
+    copyAPVReadout( gal_[2][i], tmpAPV );
     galleryC_->Fill();
-    copyAPVReadout( galD_[i], tmpAPV );
+    copyAPVReadout( gal_[3][i], tmpAPV );
     galleryD_->Fill();
-    copyAPVReadout( galE_[i], tmpAPV );
+    copyAPVReadout( gal_[4][i], tmpAPV );
     galleryE_->Fill();
   }
 
@@ -778,6 +658,40 @@ void SiStripCMNAnalyzer::copyAPVReadout( apvReadout_t & src, apvReadout_t & dest
   dest.apv = src.apv;
 }  
 
+
+bool SiStripCMNAnalyzer::galleryCuts( double median, double per25, int gal )
+{
+
+  switch (gal)
+  {
+    case 0:
+      if ( ( 116 <= median && median < 140 ) && 
+           ( 116 <= per25 && per25 < 140 ) ) 
+         return true;
+      return false;
+    case 1:
+      if ( ( 2 <= median && median < 100 ) && 
+           ( 2 <= per25 && per25 < 100 ) ) 
+         return true;
+      return false;
+    case 2:
+      if ( ( median < 1 ) && 
+           ( per25 < 1 ) ) 
+         return true;
+      return false;
+    case 3:
+      if ( ( 160 <= median ) && 
+           ( 160 <= per25 ) )
+         return true;
+      return false;
+    case 4:
+      if ( ( 160 <= median ) && 
+           ( 116 <= per25 && per25 < 140 ) ) 
+         return true;
+      return false;
+  }
+  return false;
+}
 
 //define this as a plug-in
 DEFINE_FWK_MODULE(SiStripCMNAnalyzer);
