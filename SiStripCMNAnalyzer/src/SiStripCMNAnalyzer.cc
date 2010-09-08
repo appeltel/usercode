@@ -13,7 +13,7 @@
 //
 // Original Author:  Eric Appelt
 //         Created:  Mon Jul 26 10:37:24 CDT 2010
-// $Id: SiStripCMNAnalyzer.cc,v 1.14 2010/09/07 13:39:57 appeltel Exp $
+// $Id: SiStripCMNAnalyzer.cc,v 1.15 2010/09/08 14:48:29 appeltel Exp $
 //
 //
 
@@ -359,6 +359,7 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
             fillClusterValues( medianClusterVec, gal_[galNum][currentGraph].clustersMedian, APV );
             fillClusterValues( per25ClusterVec, gal_[galNum][currentGraph].clustersPer25, APV );
             fillClusterValues( iterMedClusterVec, gal_[galNum][currentGraph].clustersIterMed, APV );
+            fillClusterValues( fastLinClusterVec, gal_[galNum][currentGraph].clustersFastLin, APV );
             gal_[galNum][currentGraph].event = eventNumber;
             gal_[galNum][currentGraph].lumi = lumiNumber;
             gal_[galNum][currentGraph].run = runNumber;
