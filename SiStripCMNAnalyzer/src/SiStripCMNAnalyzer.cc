@@ -13,7 +13,7 @@
 //
 // Original Author:  Eric Appelt
 //         Created:  Mon Jul 26 10:37:24 CDT 2010
-// $Id: SiStripCMNAnalyzer.cc,v 1.15 2010/09/08 14:48:29 appeltel Exp $
+// $Id: SiStripCMNAnalyzer.cc,v 1.16 2010/09/08 15:25:10 appeltel Exp $
 //
 //
 
@@ -81,7 +81,7 @@ SiStripCMNAnalyzer::SiStripCMNAnalyzer(const edm::ParameterSet& iConfig)
   
 
   TString leafstring;
-  leafstring = "adc[128]/I:clustersMedian[128]/I:clustersIterMed[128]/I:clustersPer25[128]/I:medianOffset/D:iterMedOffset/D:per25Offset/D:event/I:lumi/I:run/I:detID/i:apv/I";
+  leafstring = "adc[128]/I:clustersMedian[128]/I:clustersIterMed[128]/I:clustersPer25[128]/I:clustersFastLin[128]/I:medianOffset/D:iterMedOffset/D:per25Offset/D:fastLinOffset/D:fastLinSlope/D:event/I:lumi/I:run/I:detID/i:apv/I";
 
   galleryA_ = fs->make<TTree>("galleryATree","galleryATree");
   galleryA_->Branch("apvReadouts",&tmpAPV, leafstring.Data()); 
