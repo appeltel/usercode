@@ -6,6 +6,7 @@ typedef struct
   int clustersMedian[128];
   int clustersIterMed[128];
   int clustersPer25[128];
+  int clustersFastLin[128];
   double medianOffset;
   double iterMedOffset;
   double per25Offset;
