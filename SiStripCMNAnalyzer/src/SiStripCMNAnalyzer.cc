@@ -13,7 +13,7 @@
 //
 // Original Author:  Eric Appelt
 //         Created:  Mon Jul 26 10:37:24 CDT 2010
-// $Id: SiStripCMNAnalyzer.cc,v 1.17 2010/09/08 15:45:49 appeltel Exp $
+// $Id: SiStripCMNAnalyzer.cc,v 1.18 2010/09/08 16:10:56 appeltel Exp $
 //
 //
 
@@ -338,37 +338,38 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
       // ---
       // Make the gallery plots
       //
-  
-      for ( int galNum = 0; galNum < 5; galNum++ )
+      if (countClusters( medianClusterVec, APV) >= galleryClusterMin_ ) 
       {
-        if ( galleryCuts( medianOffset[APV], per25Offset[APV], galNum ) )
+        for ( int galNum = 0; galNum < 5; galNum++ )
         {
-          int currentGraph = galCount[galNum] % 10;
-          bool doGallery = true;
-          if ( galCount[galNum] / 10 > 0 )
-            if ( gaussDistribution->fire(0.,1.) < galCount[galNum] / 10 )
-               doGallery = false;
+          if ( galleryCuts( medianOffset[APV], per25Offset[APV], galNum ) )
+          {
+            int currentGraph = galCount[galNum] % 10;
+            bool doGallery = true;
+            if ( galCount[galNum] / 10 > 0 )
+              if ( gaussDistribution->fire(0.,1.) < galCount[galNum] / 10 )
+                 doGallery = false;
 
-          if ( doGallery ) {
-            for ( int i = 0; i<128; i++) gal_[galNum][currentGraph].adc[i] = adc[i];
-            gal_[galNum][currentGraph].medianOffset = (double)medianOffset[APV];
-            gal_[galNum][currentGraph].iterMedOffset = (double)iterMedOffset[APV];
-            gal_[galNum][currentGraph].per25Offset = (double)per25Offset[APV];
-            gal_[galNum][currentGraph].fastLinOffset = (double)fastLinOffset[APV];
-            gal_[galNum][currentGraph].fastLinSlope = (double)fastLinSlope[APV];
-            fillClusterValues( medianClusterVec, gal_[galNum][currentGraph].clustersMedian, APV );
-            fillClusterValues( per25ClusterVec, gal_[galNum][currentGraph].clustersPer25, APV );
-            fillClusterValues( iterMedClusterVec, gal_[galNum][currentGraph].clustersIterMed, APV );
-            fillClusterValues( fastLinClusterVec, gal_[galNum][currentGraph].clustersFastLin, APV );
-            gal_[galNum][currentGraph].event = eventNumber;
-            gal_[galNum][currentGraph].lumi = lumiNumber;
-            gal_[galNum][currentGraph].run = runNumber;
-            gal_[galNum][currentGraph].detID = rawDigis->detId();
-            gal_[galNum][currentGraph].apv = APV;
-            galCount[galNum]++;
+            if ( doGallery ) {
+              for ( int i = 0; i<128; i++) gal_[galNum][currentGraph].adc[i] = adc[i];
+              gal_[galNum][currentGraph].medianOffset = (double)medianOffset[APV];
+              gal_[galNum][currentGraph].iterMedOffset = (double)iterMedOffset[APV];
+              gal_[galNum][currentGraph].per25Offset = (double)per25Offset[APV];
+              gal_[galNum][currentGraph].fastLinOffset = (double)fastLinOffset[APV];
+              gal_[galNum][currentGraph].fastLinSlope = (double)fastLinSlope[APV];
+              fillClusterValues( medianClusterVec, gal_[galNum][currentGraph].clustersMedian, APV );
+              fillClusterValues( per25ClusterVec, gal_[galNum][currentGraph].clustersPer25, APV );
+              fillClusterValues( iterMedClusterVec, gal_[galNum][currentGraph].clustersIterMed, APV );
+              fillClusterValues( fastLinClusterVec, gal_[galNum][currentGraph].clustersFastLin, APV );
+              gal_[galNum][currentGraph].event = eventNumber;
+              gal_[galNum][currentGraph].lumi = lumiNumber;
+              gal_[galNum][currentGraph].run = runNumber;
+              gal_[galNum][currentGraph].detID = rawDigis->detId();
+              gal_[galNum][currentGraph].apv = APV;
+              galCount[galNum]++;
+            }
           }
         }
-
       }
 
     }  // END HISTOGRAMMING LOOP OVER APVS IN THE MODULE
