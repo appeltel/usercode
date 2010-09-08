@@ -13,7 +13,7 @@
 //
 // Original Author:  Eric Appelt
 //         Created:  Mon Jul 26 10:37:24 CDT 2010
-// $Id: SiStripCMNAnalyzer.cc,v 1.13 2010/09/07 09:45:32 appeltel Exp $
+// $Id: SiStripCMNAnalyzer.cc,v 1.14 2010/09/07 13:39:57 appeltel Exp $
 //
 //
 
@@ -179,14 +179,18 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
      std::vector<int16_t> medianSubtractedDigis(rawDigis->size());
      std::vector<int16_t> per25SubtractedDigis(rawDigis->size());
      std::vector<int16_t> iterMedSubtractedDigis( rawDigis->size());
+     std::vector<int16_t> fastLinSubtractedDigis( rawDigis->size());
      std::vector<float> medianOffset;
      std::vector<float> iterMedOffset;
      std::vector<float> per25Offset;
+     std::vector<float> fastLinOffset;
+     std::vector<float> fastLinSlope;
 
      edm::DetSet<SiStripDigi> medianZSDigis(rawDigis->id);
      edm::DetSet<SiStripDigi> per25ZSDigis(rawDigis->id);
      edm::DetSet<SiStripDigi> iterMedZSDigis(rawDigis->id);
-     
+     edm::DetSet<SiStripDigi> fastLinZSDigis(rawDigis->id);     
+
      SiStripDetId sid( rawDigis->detId() );
 
      // The clusterizer wants to see entire DetSetVectors
@@ -194,10 +198,12 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
      edm::DetSetVector<SiStripDigi> medianZSVec;
      edm::DetSetVector<SiStripDigi> per25ZSVec;
      edm::DetSetVector<SiStripDigi> iterMedZSVec;
+     edm::DetSetVector<SiStripDigi> fastLinZSVec;
 
      edmNew::DetSetVector<SiStripCluster> medianClusterVec;
      edmNew::DetSetVector<SiStripCluster> per25ClusterVec;
      edmNew::DetSetVector<SiStripCluster> iterMedClusterVec;
+     edmNew::DetSetVector<SiStripCluster> fastLinClusterVec;
 
     // ---
     // Perform pedestal subtraction
@@ -212,6 +218,7 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     subtractMedian( pedestalSubDigis, medianSubtractedDigis, medianOffset );
     subtractIterMed( pedestalSubDigis, iterMedSubtractedDigis, iterMedOffset, rawDigis->detId() );
     subtractPer25( pedestalSubDigis, per25SubtractedDigis, per25Offset );
+    subtractFastLin( pedestalSubDigis, fastLinSubtractedDigis, fastLinOffset, fastLinSlope );
 
     // ---
     // Now perform zero subtraction on the module for each CMN remover algorithm 
@@ -220,6 +227,7 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     algorithms->suppressor->suppress( medianSubtractedDigis, medianZSDigis );
     algorithms->suppressor->suppress( iterMedSubtractedDigis, iterMedZSDigis );
     algorithms->suppressor->suppress( per25SubtractedDigis, per25ZSDigis );
+    algorithms->suppressor->suppress( fastLinSubtractedDigis, fastLinZSDigis );
 
     // ---
     // Run the clusterizer on the ZS digis
@@ -228,10 +236,12 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     medianZSVec.insert(medianZSDigis);
     per25ZSVec.insert(per25ZSDigis);
     iterMedZSVec.insert(iterMedZSDigis);
+    fastLinZSVec.insert(fastLinZSDigis);
 
     clusterAlgorithm->clusterize(medianZSVec, medianClusterVec);
     clusterAlgorithm->clusterize(iterMedZSVec, iterMedClusterVec);
     clusterAlgorithm->clusterize(per25ZSVec, per25ClusterVec);
+    clusterAlgorithm->clusterize(fastLinZSVec, fastLinClusterVec);
 
     medianTotClus += medianClusterVec.dataSize();
     iterMedTotClus += iterMedClusterVec.dataSize();
@@ -344,6 +354,8 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
             gal_[galNum][currentGraph].medianOffset = (double)medianOffset[APV];
             gal_[galNum][currentGraph].iterMedOffset = (double)iterMedOffset[APV];
             gal_[galNum][currentGraph].per25Offset = (double)per25Offset[APV];
+            gal_[galNum][currentGraph].fastLinOffset = (double)fastLinOffset[APV];
+            gal_[galNum][currentGraph].fastLinSlope = (double)fastLinSlope[APV];
             fillClusterValues( medianClusterVec, gal_[galNum][currentGraph].clustersMedian, APV );
             fillClusterValues( per25ClusterVec, gal_[galNum][currentGraph].clustersPer25, APV );
             fillClusterValues( iterMedClusterVec, gal_[galNum][currentGraph].clustersIterMed, APV );
@@ -421,6 +433,35 @@ void SiStripCMNAnalyzer::subtractMedian( std::vector<int16_t>& in, std::vector<i
     }
   }
 }    
+
+void SiStripCMNAnalyzer::subtractFastLin( std::vector<int16_t>& in, std::vector<int16_t>& out,   
+                                          std::vector<float>& offsets, std::vector<float>& slopes )
+{
+  std::vector<int16_t> tmp;  tmp.reserve(128);
+  std::vector<int16_t>::iterator 
+    strip( in.begin() ), 
+    stripOut( out.begin() ),
+    end(   in.end()   ),
+    endAPV, high, low;
+
+  while( strip < end ) {
+    endAPV = strip+128; tmp.clear();
+    tmp.insert(tmp.end(),strip,endAPV);
+    const float offset = median(tmp);
+    offsets.push_back( offset );
+    
+    low = strip;   high = strip+64;   tmp.clear(); 
+    while( high < endAPV) tmp.push_back( *high++ - *low++ );
+    const float slope = median(tmp)/64.;
+    slopes.push_back( slope );    
+
+    while (strip < endAPV) {
+      *stripOut = *strip - (offset + slope*(65 - (endAPV-strip) ) );
+      strip++; stripOut++;
+    }
+
+  }
+}
 
 
 void SiStripCMNAnalyzer::subtractIterMed( std::vector<int16_t>& in, std::vector<int16_t>& out, 

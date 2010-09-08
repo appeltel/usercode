@@ -9,6 +9,8 @@ typedef struct
   double medianOffset;
   double iterMedOffset;
   double per25Offset;
+  double fastLinOffset;
+  double fastLinSlope;
   int event;
   int lumi;
   int run;
@@ -191,6 +193,7 @@ void cmn_plotMacro()
   TLine * medianR[10];
   TLine * percent25R[10];
   TLine * imedianR[10];
+  TLine * fastlin[10];
   TLegend * bleg[10]; 
  
   TLine *  clusterLineM[1280];
@@ -202,6 +205,9 @@ void cmn_plotMacro()
   TLine *  clusterLineME[1280];
   TLine *  clusterLineIME[1280];
   TLine *  clusterLine25E[1280];
+  TLine *  clusterLineFL[1280];
+  TLine *  clusterLineFLF[1280];
+  TLine *  clusterLineFLE[1280];
 
   for( int j=0; j<10; j++)
   {
@@ -223,6 +229,8 @@ void cmn_plotMacro()
     Double_t med;
     Double_t per25;
     Double_t imed;
+    Double_t floffset;
+    Double_t flslope;
     bg[j]->GetXaxis()->SetLimits(0.,128.);
     bg[j]->GetYaxis()->SetRangeUser(0.,900.);
     bg[j]->GetYaxis()->SetTitle("ADC Count");
@@ -230,9 +238,12 @@ void cmn_plotMacro()
     median[j] = new TLine(0,gc.medianOffset,128,gc.medianOffset);
     imedian[j] = new TLine(0,gc.iterMedOffset,128,gc.iterMedOffset);
     percent25[j] = new TLine(0,gc.per25Offset,128,gc.per25Offset);
+    fastlin[j] = new TLine(0, gc.fastLinOffset + gc.fastLinSlope * ( -63 ),
+                           128, gc.fastLinOffset + gc.fastLinSlope * ( 65 ));
     median[j]->SetLineColor(kBlue);
     imedian[j]->SetLineColor(kViolet);
     percent25[j]->SetLineColor(kRed);
+    fastlin[j]->SetLineColor(kGreen);
     bg[j]->SetMarkerStyle(7);
     if (gensignal) 
     {
@@ -246,6 +257,7 @@ void cmn_plotMacro()
     median[j]->Draw("same");
     imedian[j]->Draw("same");
     percent25[j]->Draw("same");
+    fastlin[j]->Draw("same");
     for( int k = 0; k < 128; k+= 2 )
     {
       Double_t first = gc.clustersMedian[k];
@@ -302,6 +314,26 @@ void cmn_plotMacro()
         clusterLine25F[j*128+k]->Draw("same");
         clusterLine25E[j*128+k] = new TLine(last, 675, last, 725);
         clusterLine25E[j*128+k]->SetLineColor(kRed);
+        clusterLine25E[j*128+k]->SetLineWidth(2);
+        clusterLine25E[j*128+k]->Draw("same");
+      }
+    }
+    for( int k = 0; k < 128; k+=2 )
+    {
+      Double_t first = gc.clustersFastLin[k];
+      Double_t last = gc.clustersFastLin[k+1];
+      if ( first != 0. && last != 0. )
+      {
+        clusterLine25[j*128+k] = new TLine(first, 800, last, 800);
+        clusterLine25[j*128+k]->SetLineColor(kGreen);
+        clusterLine25[j*128+k]->SetLineWidth(2);
+        clusterLine25[j*128+k]->Draw("same");
+        clusterLine25F[j*128+k] = new TLine(first, 775, first, 825);
+        clusterLine25F[j*128+k]->SetLineColor(kGreen);
+        clusterLine25F[j*128+k]->SetLineWidth(2);
+        clusterLine25F[j*128+k]->Draw("same");
+        clusterLine25E[j*128+k] = new TLine(last, 775, last, 825);
+        clusterLine25E[j*128+k]->SetLineColor(kGreen);
         clusterLine25E[j*128+k]->SetLineWidth(2);
         clusterLine25E[j*128+k]->Draw("same");
       }

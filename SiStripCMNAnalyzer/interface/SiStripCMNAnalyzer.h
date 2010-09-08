@@ -64,6 +64,8 @@ typedef struct
   double medianOffset;
   double iterMedOffset;
   double per25Offset;
+  double fastLinOffset;
+  double fastLinSlope;
   int event;
   int lumi;
   int run;
@@ -100,6 +102,8 @@ class SiStripCMNAnalyzer : public edm::EDAnalyzer {
       void subtractPer25( std::vector<int16_t>& in, std::vector<int16_t>& out, std::vector<float>& results);
       void subtractIterMed( std::vector<int16_t>& in, std::vector<int16_t>& out, 
                             std::vector<float>& results, uint32_t detId);
+      void subtractFastLin( std::vector<int16_t>& in, std::vector<int16_t>& out, 
+                            std::vector<float>& offsets, std::vector<float>& slopes );
 
       int digiCount( edm::DetSet<SiStripDigi>& module, int APV );
 
