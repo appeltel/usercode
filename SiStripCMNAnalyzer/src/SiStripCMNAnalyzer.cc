@@ -13,7 +13,7 @@
 //
 // Original Author:  Eric Appelt
 //         Created:  Mon Jul 26 10:37:24 CDT 2010
-// $Id: SiStripCMNAnalyzer.cc,v 1.16 2010/09/08 15:25:10 appeltel Exp $
+// $Id: SiStripCMNAnalyzer.cc,v 1.17 2010/09/08 15:45:49 appeltel Exp $
 //
 //
 
@@ -689,10 +689,13 @@ void SiStripCMNAnalyzer::copyAPVReadout( apvReadout_t & src, apvReadout_t & dest
     dest.clustersMedian[i] = src.clustersMedian[i];
     dest.clustersIterMed[i] = src.clustersIterMed[i];
     dest.clustersPer25[i] = src.clustersPer25[i];
+    dest.clustersFastLin[i] = src.clustersFastLin[i];
   }
   dest.medianOffset = src.medianOffset;
   dest.iterMedOffset = src.iterMedOffset;
   dest.per25Offset = src.per25Offset;
+  dest.fastLinOffset = src.fastLinOffset;
+  dest.fastLinSlope = src.fastLinSlope;
   dest.event = src.event;
   dest.lumi = src.lumi;
   dest.run = src.run;
