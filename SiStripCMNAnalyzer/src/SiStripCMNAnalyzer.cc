@@ -13,7 +13,7 @@
 //
 // Original Author:  Eric Appelt
 //         Created:  Mon Jul 26 10:37:24 CDT 2010
-// $Id: SiStripCMNAnalyzer.cc,v 1.18 2010/09/08 16:10:56 appeltel Exp $
+// $Id: SiStripCMNAnalyzer.cc,v 1.19 2010/09/08 17:15:05 appeltel Exp $
 //
 //
 
@@ -81,7 +81,7 @@ SiStripCMNAnalyzer::SiStripCMNAnalyzer(const edm::ParameterSet& iConfig)
   
 
   TString leafstring;
-  leafstring = "adc[128]/I:clustersMedian[128]/I:clustersIterMed[128]/I:clustersPer25[128]/I:clustersFastLin[128]/I:medianOffset/D:iterMedOffset/D:per25Offset/D:fastLinOffset/D:fastLinSlope/D:event/I:lumi/I:run/I:detID/i:apv/I";
+  leafstring = "adc[128]/I:clustersMedian[128]/I:clustersIterMed[128]/I:clustersPer25[128]/I:clustersFastLin[128]/I:clustersSplitLin[128]/I:medianOffset/D:iterMedOffset/D:per25Offset/D:fastLinOffset/D:fastLinSlope/D:splitLinOffsetA/D:splitLinOffsetB/D:splitLinSlopeA/D:splitLinSlopeB/D:event/I:lumi/I:run/I:detID/i:apv/I";
 
   galleryA_ = fs->make<TTree>("galleryATree","galleryATree");
   galleryA_->Branch("apvReadouts",&tmpAPV, leafstring.Data()); 
@@ -178,18 +178,25 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
 
      std::vector<int16_t> medianSubtractedDigis(rawDigis->size());
      std::vector<int16_t> per25SubtractedDigis(rawDigis->size());
-     std::vector<int16_t> iterMedSubtractedDigis( rawDigis->size());
-     std::vector<int16_t> fastLinSubtractedDigis( rawDigis->size());
+     std::vector<int16_t> iterMedSubtractedDigis(rawDigis->size());
+     std::vector<int16_t> fastLinSubtractedDigis(rawDigis->size());
+     std::vector<int16_t> splitLinSubtractedDigis(rawDigis->size()); 
      std::vector<float> medianOffset;
      std::vector<float> iterMedOffset;
      std::vector<float> per25Offset;
      std::vector<float> fastLinOffset;
      std::vector<float> fastLinSlope;
+     std::vector<float> splitLinOffsetA;
+     std::vector<float> splitLinOffsetB;
+     std::vector<float> splitLinSlopeA;
+     std::vector<float> splitLinSlopeB;
+     
 
      edm::DetSet<SiStripDigi> medianZSDigis(rawDigis->id);
      edm::DetSet<SiStripDigi> per25ZSDigis(rawDigis->id);
      edm::DetSet<SiStripDigi> iterMedZSDigis(rawDigis->id);
      edm::DetSet<SiStripDigi> fastLinZSDigis(rawDigis->id);     
+     edm::DetSet<SiStripDigi> splitLinZSDigis(rawDigis->id);
 
      SiStripDetId sid( rawDigis->detId() );
 
@@ -199,11 +206,13 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
      edm::DetSetVector<SiStripDigi> per25ZSVec;
      edm::DetSetVector<SiStripDigi> iterMedZSVec;
      edm::DetSetVector<SiStripDigi> fastLinZSVec;
+     edm::DetSetVector<SiStripDigi> splitLinZSVec;
 
      edmNew::DetSetVector<SiStripCluster> medianClusterVec;
      edmNew::DetSetVector<SiStripCluster> per25ClusterVec;
      edmNew::DetSetVector<SiStripCluster> iterMedClusterVec;
      edmNew::DetSetVector<SiStripCluster> fastLinClusterVec;
+     edmNew::DetSetVector<SiStripCluster> splitLinClusterVec;
 
     // ---
     // Perform pedestal subtraction
@@ -219,6 +228,8 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     subtractIterMed( pedestalSubDigis, iterMedSubtractedDigis, iterMedOffset, rawDigis->detId() );
     subtractPer25( pedestalSubDigis, per25SubtractedDigis, per25Offset );
     subtractFastLin( pedestalSubDigis, fastLinSubtractedDigis, fastLinOffset, fastLinSlope );
+    subtractSplitLin( pedestalSubDigis, splitLinSubtractedDigis, splitLinOffsetA, 
+                      splitLinOffsetB, splitLinSlopeA, splitLinSlopeB );
 
     // ---
     // Now perform zero subtraction on the module for each CMN remover algorithm 
@@ -228,6 +239,7 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     algorithms->suppressor->suppress( iterMedSubtractedDigis, iterMedZSDigis );
     algorithms->suppressor->suppress( per25SubtractedDigis, per25ZSDigis );
     algorithms->suppressor->suppress( fastLinSubtractedDigis, fastLinZSDigis );
+    algorithms->suppressor->suppress( splitLinSubtractedDigis, splitLinZSDigis );
 
     // ---
     // Run the clusterizer on the ZS digis
@@ -237,11 +249,13 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     per25ZSVec.insert(per25ZSDigis);
     iterMedZSVec.insert(iterMedZSDigis);
     fastLinZSVec.insert(fastLinZSDigis);
+    splitLinZSVec.insert(splitLinZSDigis);
 
     clusterAlgorithm->clusterize(medianZSVec, medianClusterVec);
     clusterAlgorithm->clusterize(iterMedZSVec, iterMedClusterVec);
     clusterAlgorithm->clusterize(per25ZSVec, per25ClusterVec);
     clusterAlgorithm->clusterize(fastLinZSVec, fastLinClusterVec);
+    clusterAlgorithm->clusterize(splitLinZSVec, splitLinClusterVec);
 
     medianTotClus += medianClusterVec.dataSize();
     iterMedTotClus += iterMedClusterVec.dataSize();
@@ -357,10 +371,13 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
               gal_[galNum][currentGraph].per25Offset = (double)per25Offset[APV];
               gal_[galNum][currentGraph].fastLinOffset = (double)fastLinOffset[APV];
               gal_[galNum][currentGraph].fastLinSlope = (double)fastLinSlope[APV];
+              gal_[galNum][currentGraph].splitLinOffsetA = (double)splitLinOffsetA[APV];
+              gal_[galNum][currentGraph].splitLinOffsetB = (double)splitLinOffsetB[APV];
               fillClusterValues( medianClusterVec, gal_[galNum][currentGraph].clustersMedian, APV );
               fillClusterValues( per25ClusterVec, gal_[galNum][currentGraph].clustersPer25, APV );
               fillClusterValues( iterMedClusterVec, gal_[galNum][currentGraph].clustersIterMed, APV );
               fillClusterValues( fastLinClusterVec, gal_[galNum][currentGraph].clustersFastLin, APV );
+              fillClusterValues( splitLinClusterVec, gal_[galNum][currentGraph].clustersSplitLin, APV );
               gal_[galNum][currentGraph].event = eventNumber;
               gal_[galNum][currentGraph].lumi = lumiNumber;
               gal_[galNum][currentGraph].run = runNumber;
@@ -465,6 +482,52 @@ void SiStripCMNAnalyzer::subtractFastLin( std::vector<int16_t>& in, std::vector<
   }
 }
 
+void SiStripCMNAnalyzer::subtractSplitLin( std::vector<int16_t>& in, std::vector<int16_t>& out,   
+                                           std::vector<float>& offsetsA, std::vector<float>& offsetsB,
+                                           std::vector<float>& slopesA, std::vector<float>& slopesB )
+{
+  std::vector<int16_t> tmp;  tmp.reserve(64);
+  std::vector<int16_t>::iterator 
+    strip( in.begin() ), 
+    stripOut( out.begin() ),
+    end(   in.end()   ),
+    endSegment, high, low;
+
+  while( strip < end ) {
+    endSegment = strip+64; tmp.clear();
+    tmp.insert(tmp.end(),strip,endSegment);
+    const float offsetA = median(tmp);
+    offsetsA.push_back( offsetA );
+    
+    low = strip;   high = strip+32;   tmp.clear(); 
+    while( high < endSegment) tmp.push_back( *high++ - *low++ );
+    const float slopeA = median(tmp)/32.;
+    slopesA.push_back( slopeA );    
+
+    while (strip < endSegment) {
+      *stripOut = *strip - (offsetA + slopeA*(33 - (endSegment-strip) ) );
+      strip++; stripOut++;
+    }
+
+    endSegment = strip+64; tmp.clear();
+    tmp.insert(tmp.end(),strip,endSegment);
+    const float offsetB = median(tmp);
+    offsetsB.push_back( offsetB );
+
+    low = strip;   high = strip+32;   tmp.clear();
+    while( high < endSegment) tmp.push_back( *high++ - *low++ );
+    const float slopeB = median(tmp)/32.;
+    slopesB.push_back( slopeB );
+
+    while (strip < endSegment) {
+      *stripOut = *strip - (offsetB + slopeB*(33 - (endSegment-strip) ) );
+      strip++; stripOut++;
+    }
+
+
+  }
+
+}
 
 void SiStripCMNAnalyzer::subtractIterMed( std::vector<int16_t>& in, std::vector<int16_t>& out, 
                                           std::vector<float>& results, uint32_t detId)
@@ -691,12 +754,17 @@ void SiStripCMNAnalyzer::copyAPVReadout( apvReadout_t & src, apvReadout_t & dest
     dest.clustersIterMed[i] = src.clustersIterMed[i];
     dest.clustersPer25[i] = src.clustersPer25[i];
     dest.clustersFastLin[i] = src.clustersFastLin[i];
+    dest.clustersSplitLin[i] = src.clustersSplitLin[i];
   }
   dest.medianOffset = src.medianOffset;
   dest.iterMedOffset = src.iterMedOffset;
   dest.per25Offset = src.per25Offset;
   dest.fastLinOffset = src.fastLinOffset;
   dest.fastLinSlope = src.fastLinSlope;
+  dest.splitLinOffsetA = src.splitLinOffsetA;
+  dest.splitLinOffsetB = src.splitLinOffsetB;
+  dest.splitLinSlopeA = src.splitLinSlopeA;
+  dest.splitLinSlopeB = src.splitLinSlopeB;
   dest.event = src.event;
   dest.lumi = src.lumi;
   dest.run = src.run;

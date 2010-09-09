@@ -62,11 +62,16 @@ typedef struct
   int clustersIterMed[128];
   int clustersPer25[128];
   int clustersFastLin[128];
+  int clustersSplitLin[128];
   double medianOffset;
   double iterMedOffset;
   double per25Offset;
   double fastLinOffset;
   double fastLinSlope;
+  double splitLinOffsetA;
+  double splitLinOffsetB;
+  double splitLinSlopeA;
+  double splitLinSlopeB;
   int event;
   int lumi;
   int run;
@@ -105,6 +110,9 @@ class SiStripCMNAnalyzer : public edm::EDAnalyzer {
                             std::vector<float>& results, uint32_t detId);
       void subtractFastLin( std::vector<int16_t>& in, std::vector<int16_t>& out, 
                             std::vector<float>& offsets, std::vector<float>& slopes );
+      void subtractSplitLin( std::vector<int16_t>& in, std::vector<int16_t>& out, 
+                             std::vector<float>& offsetsA, std::vector<float>& offsetsB,
+                             std::vector<float>& slopesA, std::vector<float>& slopesB );
 
       int digiCount( edm::DetSet<SiStripDigi>& module, int APV );
 
