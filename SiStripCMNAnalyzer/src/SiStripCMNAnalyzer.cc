@@ -13,7 +13,7 @@
 //
 // Original Author:  Eric Appelt
 //         Created:  Mon Jul 26 10:37:24 CDT 2010
-// $Id: SiStripCMNAnalyzer.cc,v 1.19 2010/09/08 17:15:05 appeltel Exp $
+// $Id: SiStripCMNAnalyzer.cc,v 1.20 2010/09/09 09:36:29 appeltel Exp $
 //
 //
 
@@ -373,6 +373,8 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
               gal_[galNum][currentGraph].fastLinSlope = (double)fastLinSlope[APV];
               gal_[galNum][currentGraph].splitLinOffsetA = (double)splitLinOffsetA[APV];
               gal_[galNum][currentGraph].splitLinOffsetB = (double)splitLinOffsetB[APV];
+              gal_[galNum][currentGraph].splitLinSlopeA = (double)splitLinSlopeA[APV];
+              gal_[galNum][currentGraph].splitLinSlopeB = (double)splitLinSlopeB[APV];
               fillClusterValues( medianClusterVec, gal_[galNum][currentGraph].clustersMedian, APV );
               fillClusterValues( per25ClusterVec, gal_[galNum][currentGraph].clustersPer25, APV );
               fillClusterValues( iterMedClusterVec, gal_[galNum][currentGraph].clustersIterMed, APV );
