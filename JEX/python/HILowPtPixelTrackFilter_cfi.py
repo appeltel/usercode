@@ -24,3 +24,14 @@ HiLowPtFilterBlock = cms.PSet(
     lipMax = cms.double( 0.2 )
     )
 
+HiLowPtWideCutFilterBlock = cms.PSet(
+    ComponentName = cms.string( "HIPixelTrackFilter" ),
+    ptMin = cms.double( 0.2 ),
+    chi2 = cms.double( 1000.0 ),
+    useClusterShape = cms.bool( False ),
+    VertexCollection = cms.InputTag("hiSelectedVertex"),
+    nSigmaTipMaxTolerance = cms.double( 6.0 ),
+    tipMax = cms.double( 0.3 ),
+    nSigmaLipMaxTolerance = cms.double( 6.0 ),
+    lipMax = cms.double( 0.3 )
+    )

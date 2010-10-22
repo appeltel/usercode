@@ -15,6 +15,7 @@ process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 process.load('Configuration.EventContent.EventContentHeavyIons_cff')
 
 process.load('Appeltel.JEX.HILowPtPixelTracks_cfi')
+process.load('Appeltel.JEX.HILowPtWideCutPixelTracks_cfi')
 process.load('Appeltel.JEX.HIInvertedLowPtPixelTracks_cfi')
 process.load('Appeltel.JEX.HICorrFlowSkimEventContent_cff')
 
@@ -118,6 +119,7 @@ process.GlobalTag.globaltag = 'MC_37Y_V4::All'
 process.lowptpixel_step = cms.Path(
     process.siPixelRecHits * 
     process.hiLowPtPixelTracks *
+    process.hiLowPtWideCutPixelTracks *
     process.hiInvertedLowPtPixelTracks 
 )
 process.merge_step = cms.Path(
