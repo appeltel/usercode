@@ -76,7 +76,13 @@ process.cmn = cms.EDAnalyzer('SiStripCMNAnalyzer',
     RawDigiProducersList = cms.InputTag('simSiStripDigis','VirginRaw'),
     RawDigiProducersListNoise = cms.InputTag('simSiStripDigis','VirginRawSignal'),
     RawDigiProducersListSignal = cms.InputTag('simSiStripDigis','VirginRawNoise'),
-    doNoiseAndSignal = cms.bool(False)
+    doNoiseAndSignal = cms.bool(False),
+    galleryClusterMin = cms.int32( 2 ),
+    nSigmaNoiseDerTh =  cms.uint32(4),
+    consecThreshold = cms.uint32(5),
+    hitStripThreshold = cms.uint32(40),    
+    nSmooth = cms.uint32(9),      
+    minStripsToFit = cms.uint32(4)
 )
 
 process.TFileService = cms.Service("TFileService",

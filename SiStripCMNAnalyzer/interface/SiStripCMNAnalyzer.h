@@ -57,12 +57,14 @@
 
 typedef struct 
 {
+  int BLFOffset[128];
   int adc[128];
   int clustersMedian[128];
   int clustersIterMed[128];
   int clustersPer25[128];
   int clustersFastLin[128];
   int clustersSplitLin[128];
+  int clustersBLF[128];
   double medianOffset;
   double iterMedOffset;
   double per25Offset;
@@ -78,6 +80,16 @@ typedef struct
   uint32_t detID;
   int apv; 
 } apvReadout_t;
+
+
+//
+// For BaselineFollower (BLF)
+//
+
+typedef std::map< uint16_t, int16_t> DigiMap;
+typedef std::map< uint16_t, std::vector < int16_t> > RawDigiMap;
+typedef std::map< uint16_t, int16_t>::iterator DigiMapIter;
+typedef std::map<uint32_t, std::vector<float> > CMMap;  //detId, Vector of MeanCM per detId
 
 
 //
@@ -113,6 +125,8 @@ class SiStripCMNAnalyzer : public edm::EDAnalyzer {
       void subtractSplitLin( std::vector<int16_t>& in, std::vector<int16_t>& out, 
                              std::vector<float>& offsetsA, std::vector<float>& offsetsB,
                              std::vector<float>& slopesA, std::vector<float>& slopesB );
+      void subtractBLF( std::vector<int16_t>& in, std::vector<int16_t>& out,
+                        std::vector<std::vector<float> >& results, uint32_t detId);
 
       int digiCount( edm::DetSet<SiStripDigi>& module, int APV );
 
@@ -139,6 +153,13 @@ class SiStripCMNAnalyzer : public edm::EDAnalyzer {
       edm::ESHandle<SiStripNoises> noiseHandle;
       edm::ESHandle<SiStripQuality> qualityHandle;
       uint32_t noise_cache_id, quality_cache_id;
+
+      // baseline follower configuration variables
+      uint32_t nSigmaNoiseDerTh_;          // threshold for rejecting hits strips
+      uint32_t consecThreshold_;           // minimum length of flat region
+      uint32_t hitStripThreshold_;         // height above median when strip is definitely a hit
+      uint32_t nSmooth_;                   // for smoothing and local minimum determination (odd number)
+      uint32_t minStripsToFit_;            // minimum strips to try spline algo (otherwise default to median)
 
 
       float cmnTIBRMS_;
@@ -222,3 +243,4 @@ class SiStripCMNAnalyzer : public edm::EDAnalyzer {
 
 
 #endif
+

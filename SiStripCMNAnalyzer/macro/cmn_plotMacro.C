@@ -1,28 +1,5 @@
 #include <stdint.h>
 
-typedef struct
-{
-  int adc[128];
-  int clustersMedian[128];
-  int clustersIterMed[128];
-  int clustersPer25[128];
-  int clustersFastLin[128];
-  int clustersSplitLin[128];
-  double medianOffset;
-  double iterMedOffset;
-  double per25Offset;
-  double fastLinOffset;
-  double fastLinSlope;
-  double splitLinOffsetA;
-  double splitLinOffsetB;
-  double splitLinSlopeA;
-  double splitLinSlopeB;
-  int event;
-  int lumi;
-  int run;
-  uint32_t detID;
-  int apv;
-} apvReadout_t;
 
 void cmn_plotMacro()
 {
@@ -37,15 +14,12 @@ void cmn_plotMacro()
   // galleryDTree - calculated baseline >160 for 25th percentile and median
   // galleryETree - calculated baseline >160 for median but 116-140 for 25th percentile
  
-  char galleryName[30] = "galleryETree";
+  char galleryName[30] = "galleryCTree";
 
   // File to analyze
 
-  TFile *f1 = TFile::Open("cmn_devel.root");
+  TFile *f1 = TFile::Open("cmn_146421_qq_BLF.root");
 
-  // Plot signal-only rawDigis (for hacked Digitizer events only)
-
-  bool gensignal = false;
 
   // ----------------------------------------
 
@@ -193,6 +167,7 @@ void cmn_plotMacro()
   TGraph * bg[10];
   TH1F * bgf[10];
   TGraph * bsig[10];
+  TGraph * blf[10];
   TLine * median[10];
   TLine * percent25[10];
   TLine * imedian[10];
@@ -219,6 +194,19 @@ void cmn_plotMacro()
   TLine *  clusterLineSL[1280];
   TLine *  clusterLineSLF[1280];
   TLine *  clusterLineSLE[1280];
+  TLine *  clusterLineBL[1280];
+  TLine *  clusterLineBLF[1280];
+  TLine *  clusterLineBLE[1280];
+
+  TH1F * flins = new TH1F("flins","flins",10,0.,10.);
+  flins->SetLineColor(kGreen);
+  flins->SetLineWidth(2);
+  TH1F * slins = new TH1F("slins","slins",10,0.,10.);
+  slins->SetLineColor(kOrange);
+  slins->SetLineWidth(2);
+  TH1F * blfkey = new TH1F("blfkey","blfkey",10,0.,10.);
+  blfkey->SetLineColor(kCyan);
+  blfkey->SetLineWidth(2);
 
   for( int j=0; j<10; j++)
   {
@@ -231,10 +219,10 @@ void cmn_plotMacro()
     bad[j]->SetFrameBorderMode(0);
     bad[j]->cd(1);
     bg[j] = new TGraph( 128 );
+    blf[j] = new TGraph( 128 );
     for( int k = 0; k<128; k++) bg[j]->SetPoint( k, k+1, gc.adc[k] );
-    if ( gensignal)
-      bsig[j] = (TGraph*) f1->Get(Form("cmn/%sSignalCount%d",gallery,j));
-    bg[j]->SetTitle(Form("Event %d Lumi %d Run %d DetID %d APV %d",
+    for( int k = 0; k<128; k++) blf[j]->SetPoint( k, k+1, gc.BLFOffset[k] );
+    blf[j]->SetTitle(Form("Event %d Lumi %d Run %d DetID %d APV %d",
                     gc.event, gc.lumi, gc.run, (int) gc.detID, gc.apv));
     Double_t dummy;
     Double_t med;
@@ -242,10 +230,10 @@ void cmn_plotMacro()
     Double_t imed;
     Double_t floffset;
     Double_t flslope;
-    bg[j]->GetXaxis()->SetLimits(0.,128.);
-    bg[j]->GetYaxis()->SetRangeUser(0.,900.);
-    bg[j]->GetYaxis()->SetTitle("ADC Count");
-    bg[j]->GetXaxis()->SetTitle("Si Strip Number");
+    blf[j]->GetXaxis()->SetLimits(0.,128.);
+    blf[j]->GetYaxis()->SetRangeUser(-200.,1000.);
+    blf[j]->GetYaxis()->SetTitle("ADC Count");
+    blf[j]->GetXaxis()->SetTitle("Si Strip Number");
     median[j] = new TLine(0,gc.medianOffset,128,gc.medianOffset);
     imedian[j] = new TLine(0,gc.iterMedOffset,128,gc.iterMedOffset);
     percent25[j] = new TLine(0,gc.per25Offset,128,gc.per25Offset);
@@ -259,18 +247,13 @@ void cmn_plotMacro()
     imedian[j]->SetLineColor(kViolet);
     percent25[j]->SetLineColor(kRed);
     fastlin[j]->SetLineColor(kGreen);
-    splitlinA[j]->SetLineColor(kBrown);
-    splitlinB[j]->SetLineColor(kBrown);
+    splitlinA[j]->SetLineColor(kOrange);
+    splitlinB[j]->SetLineColor(kOrange);
+    blf[j]->SetLineWidth(3);
+    blf[j]->SetLineColor(kCyan);
+    blf[j]->Draw("al");
     bg[j]->SetMarkerStyle(7);
-    if (gensignal) 
-    {
-      bsig[j]->SetMarkerStyle(7);
-      bsig[j]->SetLineColor(kGreen);
-      bsig[j]->SetMarkerColor(kGreen);
-    }
-    bg[j]->Draw("apl");
-    if (gensignal)
-      bsig[j]->Draw("pl");
+    bg[j]->Draw("pl");
     median[j]->Draw("same");
     imedian[j]->Draw("same");
     percent25[j]->Draw("same");
@@ -364,17 +347,37 @@ void cmn_plotMacro()
       if ( first != 0. && last != 0. )
       {
         clusterLineSL[j*128+k] = new TLine(first, 900, last, 900);
-        clusterLineSL[j*128+k]->SetLineColor(kBrown);
+        clusterLineSL[j*128+k]->SetLineColor(kOrange);
         clusterLineSL[j*128+k]->SetLineWidth(2);
         clusterLineSL[j*128+k]->Draw("same");
         clusterLineSLF[j*128+k] = new TLine(first, 875, first, 925);
-        clusterLineSLF[j*128+k]->SetLineColor(kBrown);
+        clusterLineSLF[j*128+k]->SetLineColor(kOrange);
         clusterLineSLF[j*128+k]->SetLineWidth(2);
         clusterLineSLF[j*128+k]->Draw("same");
         clusterLineSLE[j*128+k] = new TLine(last, 875, last, 925);
-        clusterLineSLE[j*128+k]->SetLineColor(kBrown);
+        clusterLineSLE[j*128+k]->SetLineColor(kOrange);
         clusterLineSLE[j*128+k]->SetLineWidth(2);
         clusterLineSLE[j*128+k]->Draw("same");
+      }
+    }
+    for( int k = 0; k < 128; k+=2 )
+    {
+      Double_t first = gc.clustersBLF[k];
+      Double_t last = gc.clustersBLF[k+1];
+      if ( first != 0. && last != 0. )
+      {
+        clusterLineBL[j*128+k] = new TLine(first, 950, last, 950);
+        clusterLineBL[j*128+k]->SetLineColor(kCyan);
+        clusterLineBL[j*128+k]->SetLineWidth(2);
+        clusterLineBL[j*128+k]->Draw("same");
+        clusterLineBLF[j*128+k] = new TLine(first, 925, first, 975);
+        clusterLineBLF[j*128+k]->SetLineColor(kCyan);
+        clusterLineBLF[j*128+k]->SetLineWidth(2);
+        clusterLineBLF[j*128+k]->Draw("same");
+        clusterLineBLE[j*128+k] = new TLine(last, 925, last, 975);
+        clusterLineBLE[j*128+k]->SetLineColor(kCyan);
+        clusterLineBLE[j*128+k]->SetLineWidth(2);
+        clusterLineBLE[j*128+k]->Draw("same");
       }
     }
     bad[j]->cd(2);
@@ -409,12 +412,39 @@ void cmn_plotMacro()
     bleg[j]->AddEntry(qmedians[0],"Median Algorithm");
     bleg[j]->AddEntry(quarters[0],"25th Percentile Algorithm");
     bleg[j]->AddEntry(imedians[0],"Iterated Median Algorithm");
+    bleg[j]->AddEntry(flins,"Fast Linear Algorithm");
+    bleg[j]->AddEntry(slins,"Split Fast Linear Algorithm");
+    bleg[j]->AddEntry(blfkey,"Baseline Follower Algorithm");
     bleg[j]->SetFillColor(0);
     bleg[j]->Draw(); 
   }
 }
 
 
-
+typedef struct
+{
+  int BLFOffset[128];
+  int adc[128];
+  int clustersMedian[128];
+  int clustersIterMed[128];
+  int clustersPer25[128];
+  int clustersFastLin[128];
+  int clustersSplitLin[128];
+  int clustersBLF[128];
+  double medianOffset;
+  double iterMedOffset;
+  double per25Offset;
+  double fastLinOffset;
+  double fastLinSlope;
+  double splitLinOffsetA;
+  double splitLinOffsetB;
+  double splitLinSlopeA;
+  double splitLinSlopeB;
+  int event;
+  int lumi;
+  int run;
+  uint32_t detID;
+  int apv;
+} apvReadout_t;
 
 

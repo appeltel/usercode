@@ -13,7 +13,7 @@
 //
 // Original Author:  Eric Appelt
 //         Created:  Mon Jul 26 10:37:24 CDT 2010
-// $Id: SiStripCMNAnalyzer.cc,v 1.20 2010/09/09 09:36:29 appeltel Exp $
+// $Id: SiStripCMNAnalyzer.cc,v 1.21 2010/09/09 09:59:11 appeltel Exp $
 //
 //
 
@@ -26,7 +26,13 @@ SiStripCMNAnalyzer::SiStripCMNAnalyzer(const edm::ParameterSet& iConfig)
   :  algorithms(SiStripRawProcessingFactory::create(iConfig.getParameter<edm::ParameterSet>("Algorithms"))),
      clusterAlgorithm( StripClusterizerAlgorithmFactory::create(iConfig.getParameter<edm::ParameterSet>("Clusterizer")) ), 
      inputTag(iConfig.getParameter<edm::InputTag>("RawDigiProducersList")),
-     galleryClusterMin_(iConfig.exists("galleryClusterMin")?iConfig.getParameter<int>("galleryClusterMin"):0)
+     galleryClusterMin_(iConfig.exists("galleryClusterMin")?iConfig.getParameter<int>("galleryClusterMin"):0),
+     nSigmaNoiseDerTh_(iConfig.getParameter<uint32_t>("nSigmaNoiseDerTh")),
+     consecThreshold_(iConfig.getParameter<uint32_t>("consecThreshold")),
+     hitStripThreshold_(iConfig.getParameter<uint32_t>("hitStripThreshold")),
+     nSmooth_(iConfig.getParameter<uint32_t>("nSmooth")),
+     minStripsToFit_(iConfig.getParameter<uint32_t>("minStripsToFit"))
+
 {
 
   edm::Service<TFileService> fs;
@@ -81,7 +87,7 @@ SiStripCMNAnalyzer::SiStripCMNAnalyzer(const edm::ParameterSet& iConfig)
   
 
   TString leafstring;
-  leafstring = "adc[128]/I:clustersMedian[128]/I:clustersIterMed[128]/I:clustersPer25[128]/I:clustersFastLin[128]/I:clustersSplitLin[128]/I:medianOffset/D:iterMedOffset/D:per25Offset/D:fastLinOffset/D:fastLinSlope/D:splitLinOffsetA/D:splitLinOffsetB/D:splitLinSlopeA/D:splitLinSlopeB/D:event/I:lumi/I:run/I:detID/i:apv/I";
+  leafstring = "BLFOffset[128]/I:adc[128]/I:clustersMedian[128]/I:clustersIterMed[128]/I:clustersPer25[128]/I:clustersFastLin[128]/I:clustersSplitLin[128]/I:clustersBLF[128]/I:medianOffset/D:iterMedOffset/D:per25Offset/D:fastLinOffset/D:fastLinSlope/D:splitLinOffsetA/D:splitLinOffsetB/D:splitLinSlopeA/D:splitLinSlopeB/D:event/I:lumi/I:run/I:detID/i:apv/I";
 
   galleryA_ = fs->make<TTree>("galleryATree","galleryATree");
   galleryA_->Branch("apvReadouts",&tmpAPV, leafstring.Data()); 
@@ -181,6 +187,7 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
      std::vector<int16_t> iterMedSubtractedDigis(rawDigis->size());
      std::vector<int16_t> fastLinSubtractedDigis(rawDigis->size());
      std::vector<int16_t> splitLinSubtractedDigis(rawDigis->size()); 
+     std::vector<int16_t> BLFSubtractedDigis(rawDigis->size());
      std::vector<float> medianOffset;
      std::vector<float> iterMedOffset;
      std::vector<float> per25Offset;
@@ -190,13 +197,14 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
      std::vector<float> splitLinOffsetB;
      std::vector<float> splitLinSlopeA;
      std::vector<float> splitLinSlopeB;
-     
+     std::vector<std::vector<float> > BLFOffset;
 
      edm::DetSet<SiStripDigi> medianZSDigis(rawDigis->id);
      edm::DetSet<SiStripDigi> per25ZSDigis(rawDigis->id);
      edm::DetSet<SiStripDigi> iterMedZSDigis(rawDigis->id);
      edm::DetSet<SiStripDigi> fastLinZSDigis(rawDigis->id);     
      edm::DetSet<SiStripDigi> splitLinZSDigis(rawDigis->id);
+     edm::DetSet<SiStripDigi> BLFZSDigis(rawDigis->id);
 
      SiStripDetId sid( rawDigis->detId() );
 
@@ -207,12 +215,14 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
      edm::DetSetVector<SiStripDigi> iterMedZSVec;
      edm::DetSetVector<SiStripDigi> fastLinZSVec;
      edm::DetSetVector<SiStripDigi> splitLinZSVec;
+     edm::DetSetVector<SiStripDigi> BLFZSVec;
 
      edmNew::DetSetVector<SiStripCluster> medianClusterVec;
      edmNew::DetSetVector<SiStripCluster> per25ClusterVec;
      edmNew::DetSetVector<SiStripCluster> iterMedClusterVec;
      edmNew::DetSetVector<SiStripCluster> fastLinClusterVec;
      edmNew::DetSetVector<SiStripCluster> splitLinClusterVec;
+     edmNew::DetSetVector<SiStripCluster> BLFClusterVec;
 
     // ---
     // Perform pedestal subtraction
@@ -230,6 +240,7 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     subtractFastLin( pedestalSubDigis, fastLinSubtractedDigis, fastLinOffset, fastLinSlope );
     subtractSplitLin( pedestalSubDigis, splitLinSubtractedDigis, splitLinOffsetA, 
                       splitLinOffsetB, splitLinSlopeA, splitLinSlopeB );
+    subtractBLF( pedestalSubDigis, BLFSubtractedDigis, BLFOffset, rawDigis->detId() );
 
     // ---
     // Now perform zero subtraction on the module for each CMN remover algorithm 
@@ -240,6 +251,7 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     algorithms->suppressor->suppress( per25SubtractedDigis, per25ZSDigis );
     algorithms->suppressor->suppress( fastLinSubtractedDigis, fastLinZSDigis );
     algorithms->suppressor->suppress( splitLinSubtractedDigis, splitLinZSDigis );
+    algorithms->suppressor->suppress( BLFSubtractedDigis, BLFZSDigis );
 
     // ---
     // Run the clusterizer on the ZS digis
@@ -250,12 +262,14 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     iterMedZSVec.insert(iterMedZSDigis);
     fastLinZSVec.insert(fastLinZSDigis);
     splitLinZSVec.insert(splitLinZSDigis);
+    BLFZSVec.insert(BLFZSDigis);
 
     clusterAlgorithm->clusterize(medianZSVec, medianClusterVec);
     clusterAlgorithm->clusterize(iterMedZSVec, iterMedClusterVec);
     clusterAlgorithm->clusterize(per25ZSVec, per25ClusterVec);
     clusterAlgorithm->clusterize(fastLinZSVec, fastLinClusterVec);
     clusterAlgorithm->clusterize(splitLinZSVec, splitLinClusterVec);
+    clusterAlgorithm->clusterize(BLFZSVec, BLFClusterVec);
 
     medianTotClus += medianClusterVec.dataSize();
     iterMedTotClus += iterMedClusterVec.dataSize();
@@ -365,6 +379,8 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
                  doGallery = false;
 
             if ( doGallery ) {
+              for ( int i = 0; i<128; i++) 
+                gal_[galNum][currentGraph].BLFOffset[i] = (int)BLFOffset[APV][i];
               for ( int i = 0; i<128; i++) gal_[galNum][currentGraph].adc[i] = adc[i];
               gal_[galNum][currentGraph].medianOffset = (double)medianOffset[APV];
               gal_[galNum][currentGraph].iterMedOffset = (double)iterMedOffset[APV];
@@ -380,12 +396,14 @@ SiStripCMNAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
               fillClusterValues( iterMedClusterVec, gal_[galNum][currentGraph].clustersIterMed, APV );
               fillClusterValues( fastLinClusterVec, gal_[galNum][currentGraph].clustersFastLin, APV );
               fillClusterValues( splitLinClusterVec, gal_[galNum][currentGraph].clustersSplitLin, APV );
+              fillClusterValues( BLFClusterVec, gal_[galNum][currentGraph].clustersBLF, APV );
               gal_[galNum][currentGraph].event = eventNumber;
               gal_[galNum][currentGraph].lumi = lumiNumber;
               gal_[galNum][currentGraph].run = runNumber;
               gal_[galNum][currentGraph].detID = rawDigis->detId();
               gal_[galNum][currentGraph].apv = APV;
               galCount[galNum]++;
+
             }
           }
         }
@@ -615,6 +633,193 @@ void SiStripCMNAnalyzer::subtractPer25( std::vector<int16_t>& in, std::vector<in
   }
 }
 
+void SiStripCMNAnalyzer::subtractBLF( std::vector<int16_t>& in, std::vector<int16_t>& out,
+                                      std::vector<std::vector<float> >& results, uint32_t detId)
+{
+
+  SiStripNoises::Range detNoiseRange = noiseHandle->getRange(detId);
+  SiStripQuality::Range detQualityRange = qualityHandle->getRange(detId);
+
+  std::vector<int16_t>::iterator fs,ls,os;
+  std::vector<float>::iterator bs;
+  os = out.begin();
+  std::vector<float> adcs;
+  adcs.reserve(128);
+
+  results.clear();
+
+
+  for( int16_t APV=0; APV< (int)in.size()/128; ++APV)
+  {
+
+    adcs.clear();
+    // fill subset vector with all strips and their noises
+    for (int16_t istrip=APV*128; istrip<(APV+1)*128; ++istrip)
+      adcs.push_back( (float)in[istrip] );
+    
+
+    DigiMap smoothedpoints;
+
+    DigiMap consecpoints;
+    DigiMapIter itConsecpoints, itSmoothedpoints;
+    consecpoints.erase(consecpoints.begin(), consecpoints.end());
+    smoothedpoints.erase(smoothedpoints.begin(), smoothedpoints.end());
+
+
+    // Find the flat regions to make the smoothed map
+
+    //============================= Height above local minimum ===============================                    
+    float adcsLocalMinSubtracted[128];
+    for(uint32_t istrip=0; istrip<128; ++istrip) {
+      float localmin = 999.9;		
+      for(uint16_t jstrip=std::max(0,(int)(istrip-nSmooth_/2)); jstrip<std::min(128,(int)(istrip+nSmooth_/2)); ++jstrip) {
+        float nextvalue = adcs[jstrip];
+        if(nextvalue < localmin) localmin=nextvalue;			
+      }
+      adcsLocalMinSubtracted[istrip] = adcs[istrip] - localmin;
+    }
+ 
+    //============================= Find regions with stable slopes ========================
+    std::vector<uint16_t> nConsStrip;
+    nConsStrip.clear();
+  
+    //Creating maps with all the neighborhood strip and putting in a nCosntStip vector how many we have
+    uint16_t consecStrips=0;
+    for(uint32_t istrip=0; istrip<128; ++istrip) {    
+      int16_t adc = adcs[istrip]; 
+    
+      if( ( adcsLocalMinSubtracted[istrip] <   nSigmaNoiseDerTh_   * (float)noiseHandle->getNoise(istrip+APV*128,detNoiseRange) )
+         /* && ( adc - median <  hitStripThreshold_ ) */ ) 
+      {
+        consecpoints.insert(consecpoints.end(), std::pair<uint16_t, int16_t >(istrip, adc));
+        ++consecStrips;
+      
+      } else if (consecStrips >0){
+        nConsStrip.push_back(consecStrips);
+        consecStrips = 0;
+      }
+    }      		
+  
+    //to cope with the last flat region of the APV
+    if(consecStrips >0) nConsStrip.push_back(consecStrips);
+  
+  
+    //removing from the map the fist and last points in wide flat regions and erasing from the map too small regions
+    itConsecpoints = consecpoints.begin();
+    float MinSmoothValue=2000., MaxSmoothValue=0.;
+    for(std::vector<uint16_t>::iterator itnConsStrip = nConsStrip.begin(); itnConsStrip < nConsStrip.end(); ++itnConsStrip){
+    
+      consecStrips = *itnConsStrip;
+      if(consecStrips >=consecThreshold_){
+        ++itConsecpoints;  //skipping first point
+        uint16_t nFirstStrip = itConsecpoints->first;
+        uint16_t nLastStrip;
+        float smoothValue = 0.0;
+        float stripCount =1;
+        for(uint16_t n =0; n < consecStrips-2; ++n){
+	  smoothValue += itConsecpoints->second;
+	  if(stripCount == consecThreshold_){
+	    smoothValue /= (float)stripCount;
+	    nLastStrip = nFirstStrip + stripCount -1;				                    
+	    smoothedpoints.insert(smoothedpoints.end(), std::pair<uint16_t, int16_t >(nFirstStrip, smoothValue));
+	    smoothedpoints.insert(smoothedpoints.end(), std::pair<uint16_t, int16_t >(nLastStrip, smoothValue));
+	    if(smoothValue > MaxSmoothValue) MaxSmoothValue = smoothValue;
+	    if(smoothValue < MinSmoothValue) MinSmoothValue = smoothValue;
+	    nFirstStrip = nLastStrip+1;
+	    smoothValue=0;
+	    stripCount=0;
+	  }
+	  ++stripCount;
+	  ++itConsecpoints;
+        }
+        ++itConsecpoints;  //and putting the pointer to the new seies of point 
+      
+        if(smoothValue>0){
+	  --stripCount;
+	  smoothValue /= (float)(stripCount);
+	  nLastStrip = nFirstStrip + stripCount -1;
+	  smoothedpoints.insert(smoothedpoints.end(), std::pair<uint16_t, int16_t >(nFirstStrip, smoothValue));
+	  smoothedpoints.insert(smoothedpoints.end(), std::pair<uint16_t, int16_t >(nLastStrip, smoothValue));
+	  if(smoothValue > MaxSmoothValue) MaxSmoothValue = smoothValue;
+	  if(smoothValue < MinSmoothValue) MinSmoothValue = smoothValue;
+        }
+      } else{
+        for(int n =0; n< consecStrips ; ++n) ++itConsecpoints;
+      }
+    }
+
+    // Now run the baseline follower over the smooth strips
+    std::vector<float> baseline;
+    baseline.clear();
+    baseline.insert(baseline.begin(),128, 0);  
+ 
+ 
+    //if not enough points
+    if(smoothedpoints.size() >= minStripsToFit_){
+     
+      DigiMapIter itSmoothedpointsBegin, itSmoothedpointsEnd;
+      itSmoothedpointsBegin = smoothedpoints.begin();
+      itSmoothedpointsEnd = --(smoothedpoints.end());    
+				
+      uint16_t firstStripFlat = itSmoothedpointsBegin->first;
+      uint16_t lastStripFlat = itSmoothedpointsEnd->first;
+      int16_t firstStipFlatADC= itSmoothedpointsBegin->second;
+      int16_t lastStipFlatADC= itSmoothedpointsEnd->second;
+    
+      //adding here the costant line at the extremities 
+      baseline.erase(baseline.begin(), baseline.begin()+firstStripFlat);
+      baseline.insert(baseline.begin(), firstStripFlat, firstStipFlatADC);
+    
+      baseline.erase(baseline.begin()+lastStripFlat, baseline.end());
+      baseline.insert(baseline.end(), 128 - lastStripFlat, lastStipFlatADC);
+    
+    
+      //IMPORTANT: the itSmoothedpointsEnd should be at least smaller than smoothedpoints.end() -1
+      for(itSmoothedpoints = itSmoothedpointsBegin; itSmoothedpoints != itSmoothedpointsEnd; ++itSmoothedpoints){  
+        DigiMapIter itSmoothedpointsNext = itSmoothedpoints;
+        ++itSmoothedpointsNext;
+        float strip1 = itSmoothedpoints->first;
+        float strip2 = itSmoothedpointsNext->first;
+        float adc1 = itSmoothedpoints->second;
+        float adc2 = itSmoothedpointsNext->second;
+      
+        baseline[strip1] = adc1;
+        baseline[strip2] = adc2;
+        float m = (adc2 -adc1)/(strip2 -strip1);
+        uint16_t itStrip = strip1 +1;
+        float stripadc = adc1 + m; 
+        while(itStrip < strip2){
+	  baseline[itStrip] = stripadc;
+	  ++itStrip;
+	  stripadc+=m;
+        }
+      
+      }
+    
+    }
+
+    // store baseline vector
+    results.push_back( baseline );
+    //results.push_back( std::vector<float>() );
+    //std::vector<float>::iterator derp;
+   // for ( derp = baseline.begin(); derp != baseline.end(); ++derp)
+   //   results[results.size()-1].push_back(*derp);
+
+    // Now (finally) subtract the baseline
+    fs = in.begin()+APV*128;
+    ls = in.begin()+(APV+1)*128;
+    bs = baseline.begin();
+    while (fs < ls)
+    {
+      *os = *fs-*bs;
+      ++os;
+      ++fs;
+      ++bs;
+    }
+
+  } // end loop over APVs
+
+}
 
 
 
@@ -751,12 +956,14 @@ void SiStripCMNAnalyzer::copyAPVReadout( apvReadout_t & src, apvReadout_t & dest
 {
   for( int i = 0; i < 128; i++)
   {
+    dest.BLFOffset[i] = src.BLFOffset[i];
     dest.adc[i] = src.adc[i];
     dest.clustersMedian[i] = src.clustersMedian[i];
     dest.clustersIterMed[i] = src.clustersIterMed[i];
     dest.clustersPer25[i] = src.clustersPer25[i];
     dest.clustersFastLin[i] = src.clustersFastLin[i];
     dest.clustersSplitLin[i] = src.clustersSplitLin[i];
+    dest.clustersBLF[i] = src.clustersBLF[i];
   }
   dest.medianOffset = src.medianOffset;
   dest.iterMedOffset = src.iterMedOffset;
