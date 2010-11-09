@@ -31,8 +31,8 @@ process.options = cms.untracked.PSet(
 process.source = cms.Source("PoolSource",
     fileNames = cms.untracked.vstring( 
 'file:/scratch/appelte1/150431-test/948A312C-3EEB-DF11-8811-0030487CAF0E.root'
+  )
 )
-
 
 # Output definition
 process.output = cms.OutputModule("PoolOutputModule",
@@ -48,8 +48,8 @@ process.output = cms.OutputModule("PoolOutputModule",
 #Trigger Selection
 
 import HLTrigger.HLTfilters.hltHighLevel_cfi
-hltMinBiasHF = HLTrigger.HLTfilters.hltHighLevel_cfi.hltHighLevel.clone()
-hltMinBiasHF.HLTPaths = ["HLT_HIMinBiasHF"]
+process.hltMinBiasHF = HLTrigger.HLTfilters.hltHighLevel_cfi.hltHighLevel.clone()
+process.hltMinBiasHF.HLTPaths = ["HLT_HIMinBiasHF"]
 
 
 # Charged Candidates
