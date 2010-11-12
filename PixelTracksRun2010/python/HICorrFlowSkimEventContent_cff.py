@@ -12,7 +12,8 @@ HICorrFlowEventContent = cms.PSet(
         'keep *_hiEvtPlane_*_*',
         'keep recoCaloJets_*_*_*', 
         'keep recoRecoChargedCandidates_*_*_*',
-        'keep CaloTowersSorted_towerMaker_*_*'
+        'keep CaloTowersSorted_towerMaker_*_*',
+        'keep recoCaloClusters_*_*_*'
     )
 )
  
