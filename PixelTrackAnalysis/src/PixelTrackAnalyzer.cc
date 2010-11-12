@@ -13,7 +13,7 @@
 //
 // Original Author:  Eric A. Appelt
 //         Created:  Fri Nov 12 04:59:50 EST 2010
-// $Id$
+// $Id: PixelTrackAnalyzer.cc,v 1.1 2010/11/12 10:50:53 appeltel Exp $
 //
 //
 
@@ -78,6 +78,8 @@ class PixelTrackAnalyzer : public edm::EDAnalyzer {
  
       TH1F* pixelptcent_[10];
 
+      TH1I* centbins_;
+
 };
 
 PixelTrackAnalyzer::PixelTrackAnalyzer(const edm::ParameterSet& iConfig):
@@ -95,13 +97,14 @@ etaCut_(iConfig.getParameter<double>("etaCut"))
   pixeld0err_ = fs->make<TH1F>("pixeld0err", "pixeld0err", 200, 0, 5);
   pixeldz_ = fs->make<TH1F>("pixeldz", "pixeldz", 200, -0.25, 0.25);
   pixeldzerr_ = fs->make<TH1F>("pixeldzerr", "pixeldzerr", 200, 0, 5);
-
   for( int i = 0; i<10; i++)
   {
     pixelptcent_[i] = fs->make<TH1F>(Form("pixelptcent%d",i),Form("pixelptcent%d",i), 200, 0., 10. );
   }
+  centbins_ = fs->make<TH1I>("centbins","centbins", 40, 0, 39);
 
-
+  // safety
+  centrality_ = 0;
 }
 
 
@@ -135,6 +138,7 @@ PixelTrackAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
    //double c = centrality_->centralityValue();
    int bin = centrality_->getBin();
 
+   centbins_->Fill(bin);
 
    // find the vertex point and error
 
