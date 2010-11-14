@@ -1,5 +1,6 @@
 // system include files
 #include <memory>
+#include <iostream>
 
 // user include files
 #include "FWCore/Framework/interface/Frameworkfwd.h"
@@ -23,9 +24,15 @@
 #include "DataFormats/SiStripCluster/interface/SiStripClusterCollection.h"
 
 #include "DataFormats/Common/interface/DetSet.h"
+#include "DataFormats/Common/interface/DetSetNew.h"
 #include "DataFormats/Common/interface/DetSetVector.h"
 #include "DataFormats/Common/interface/DetSetVectorNew.h"
 
+#include "DataFormats/SiStripDetId/interface/SiStripDetId.h"
+#include "DataFormats/SiStripDetId/interface/TECDetId.h"
+#include "DataFormats/SiStripDetId/interface/TIBDetId.h"
+#include "DataFormats/SiStripDetId/interface/TIDDetId.h"
+#include "DataFormats/SiStripDetId/interface/TOBDetId.h"
 
 //
 // class declaration
@@ -49,11 +56,15 @@ class SiStripClusterAnalyzer : public edm::EDAnalyzer {
       double etaMin_;
       double etaMax_;
 
+      int eventsProcessed_;
+
       CentralityProvider * centrality_;
  
       TH1I* clusterwidth_[10];
 
       TH1I* centbins_;
+
+      TH2F* widthDetId_;
 
 };
 
@@ -70,6 +81,8 @@ etaMax_(iConfig.getParameter<double>("etaMax"))
     clusterwidth_[i] = fs->make<TH1I>(Form("clusterwidth%d",i),Form("clusterwidth%d",i), 250, 1, 250 );
   }
   centbins_ = fs->make<TH1I>("centbins","centbins", 40, 0, 39);
+
+  widthDetId_ = fs->make<TH2F>("widthDetId","Cluster Widths vs Detector ID", 250, 1., 250., 500, 0., 66000.0); 
 
   // safety
   centrality_ = 0;
@@ -115,11 +128,13 @@ SiStripClusterAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
         int laststrip = firststrip + clus->amplitudes().size();
         clusterwidth_[bin/4]->Fill( laststrip-firststrip);     
 
+        widthDetId_->Fill( laststrip-firststrip, it->detId() % 65536 );
+
      }
    }
 
    
-
+   eventsProcessed_++;
 
 }
 
@@ -128,11 +143,16 @@ SiStripClusterAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
 void 
 SiStripClusterAnalyzer::beginJob()
 {
+   eventsProcessed_ = 0;
+
 }
 
 // ------------ method called once each job just after ending the event loop  ------------
 void 
 SiStripClusterAnalyzer::endJob() {
+ 
+  std::cout << eventsProcessed_ << " events were processed.\n";
+
 }
 
 //define this as a plug-in
