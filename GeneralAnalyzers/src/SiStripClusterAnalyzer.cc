@@ -23,6 +23,8 @@
 #include "DataFormats/SiStripCluster/interface/SiStripCluster.h"
 #include "DataFormats/SiStripCluster/interface/SiStripClusterCollection.h"
 
+#include "DataFormats/SiPixelCluster/interface/SiPixelCluster.h"
+
 #include "DataFormats/Common/interface/DetSet.h"
 #include "DataFormats/Common/interface/DetSetNew.h"
 #include "DataFormats/Common/interface/DetSetVector.h"
@@ -51,7 +53,8 @@ class SiStripClusterAnalyzer : public edm::EDAnalyzer {
 
       // ----------member data ---------------------------
 
-      edm::InputTag clusterSrc_;
+      edm::InputTag stripClusterSrc_;
+      edm::InputTag pixelClusterSrc_;
 
       double etaMin_;
       double etaMax_;
@@ -66,10 +69,13 @@ class SiStripClusterAnalyzer : public edm::EDAnalyzer {
 
       TH2F* widthDetId_;
 
+      TH2F* clusterCountPixelStrip_;
+
 };
 
 SiStripClusterAnalyzer::SiStripClusterAnalyzer(const edm::ParameterSet& iConfig):
-clusterSrc_(iConfig.getParameter<edm::InputTag>("clusterSrc")),
+stripClusterSrc_(iConfig.getParameter<edm::InputTag>("stripClusterSrc")),
+pixelClusterSrc_(iConfig.getParameter<edm::InputTag>("pixelClusterSrc")),
 etaMin_(iConfig.getParameter<double>("etaMin")),
 etaMax_(iConfig.getParameter<double>("etaMax"))
 {
@@ -83,6 +89,9 @@ etaMax_(iConfig.getParameter<double>("etaMax"))
   centbins_ = fs->make<TH1I>("centbins","centbins", 40, 0, 39);
 
   widthDetId_ = fs->make<TH2F>("widthDetId","Cluster Widths vs Detector ID", 250, 1., 250., 500, 0., 66000.0); 
+
+  clusterCountPixelStrip_ = fs->make<TH2F>("clusterCountPixelStrip","Pixel Clusters versus Strip Clusters",
+                                          200, 0., 100000., 200, 0., 50000.);
 
   // safety
   centrality_ = 0;
@@ -115,9 +124,11 @@ SiStripClusterAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
 
    centbins_->Fill(bin);
 
+   int pixelCount = 0;
+   int stripCount = 0;
+
    edm::Handle<edmNew::DetSetVector<SiStripCluster> > clusters;
-   edm::InputTag clusLabel("siStripClusters");
-   iEvent.getByLabel(clusLabel, clusters);
+   iEvent.getByLabel(stripClusterSrc_, clusters);
 
    edmNew::DetSetVector<SiStripCluster>::const_iterator it = clusters->begin();
    for ( ; it != clusters->end(); ++it )
@@ -130,10 +141,25 @@ SiStripClusterAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
 
         widthDetId_->Fill( laststrip-firststrip, it->detId() % 65536 );
 
+        stripCount++;
+
      }
    }
 
-   
+   edm::Handle<edmNew::DetSetVector<SiPixelCluster> > pclusters;
+   iEvent.getByLabel(pixelClusterSrc_, pclusters);
+
+   edmNew::DetSetVector<SiPixelCluster>::const_iterator pit = pclusters->begin();
+   for ( ; pit != pclusters->end(); ++pit )
+   {
+     for ( edmNew::DetSet<SiPixelCluster>::const_iterator pclus = pit->begin(); pclus != pit->end(); ++pclus)
+     {
+        pixelCount++;
+     }
+   }
+
+   clusterCountPixelStrip_->Fill( pixelCount, stripCount );   
+
    eventsProcessed_++;
 
 }
