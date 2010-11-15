@@ -94,7 +94,7 @@ onlyCount_(iConfig.getParameter<bool>("onlyCount"))
   widthDetId_ = fs->make<TH2F>("widthDetId","Cluster Widths vs Detector ID", 250, 1., 250., 500, 0., 66000.0); 
 
   clusterCountPixelStrip_ = fs->make<TH2F>("clusterCountPixelStrip","Pixel Clusters versus Strip Clusters",
-                                          200, 0., 100000., 200, 0., 50000.);
+                                          200, 0., 70000., 200, 0., 400000.);
 
   // safety
   centrality_ = 0;
