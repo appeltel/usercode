@@ -79,7 +79,8 @@ SiStripClusterAnalyzer::SiStripClusterAnalyzer(const edm::ParameterSet& iConfig)
 stripClusterSrc_(iConfig.getParameter<edm::InputTag>("stripClusterSrc")),
 pixelClusterSrc_(iConfig.getParameter<edm::InputTag>("pixelClusterSrc")),
 etaMin_(iConfig.getParameter<double>("etaMin")),
-etaMax_(iConfig.getParameter<double>("etaMax"))
+etaMax_(iConfig.getParameter<double>("etaMax")),
+onlyCount_(iConfig.getParameter<bool>("onlyCount"))
 {
 
   edm::Service<TFileService> fs;
