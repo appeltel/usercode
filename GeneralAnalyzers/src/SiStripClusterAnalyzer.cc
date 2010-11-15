@@ -152,10 +152,7 @@ SiStripClusterAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
    edmNew::DetSetVector<SiPixelCluster>::const_iterator pit = pclusters->begin();
    for ( ; pit != pclusters->end(); ++pit )
    {
-     for ( edmNew::DetSet<SiPixelCluster>::const_iterator pclus = pit->begin(); pclus != pit->end(); ++pclus)
-     {
-        pixelCount++;
-     }
+        pixelCount += pit->size() ;
    }
 
    clusterCountPixelStrip_->Fill( pixelCount, stripCount );   
