@@ -13,6 +13,7 @@
 <use name="FWCore/ServiceRegistry"/>
 <use name="CommonTools/UtilAlgos"/>
 <use name="DataFormats/SiStripCluster"/>
+<use name="DataFormats/SiPixelCluster"/>
 <use   name="DataFormats/HeavyIonEvent"/>
 <flags EDM_PLUGIN="1"/>
 <export>
