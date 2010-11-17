@@ -29,9 +29,17 @@ hiMergedPtSplit18Tracks = hiMergedNoPtSplitTracks.clone(
     trackCollection1MinPt = 1.8
 )
 
+hiQualityMergedTracks = hiTrackListMerger.clone(
+    TrackProducer1 = 'hiGoodTracks',
+    TrackProducer2 = 'hiGoodPixelTracks',
+    promoteTrackQuality = False,
+    allowFirstHitShare = False
+)
+
 multipleMergedTracks = cms.Sequence ( hiMergedNoPtSplitTracks
                                       * hiMergedPtSplit09Tracks
                                       * hiMergedPtSplit12Tracks
                                       * hiMergedPtSplit15Tracks
                                       * hiMergedPtSplit18Tracks
+                                      * hiQualityMergedTracks
 )
