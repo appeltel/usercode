@@ -14,6 +14,10 @@ process.load('Configuration.StandardSequences.EndOfProcess_cff')
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 process.load('Configuration.EventContent.EventContentHeavyIons_cff')
 
+process.load("HeavyIonsAnalysis.Configuration.collisionEventSelection_cff")
+
+process.load("edwenger.HiTrkEffAnalyzer.TrackSelections_cff")
+
 process.load('Appeltel.PixelTracksRun2010.HiLowPtPixelTracksFromReco_cff')
 process.load('Appeltel.PixelTracksRun2010.HiMultipleMergedTracks_cff')
 process.load('Appeltel.PixelTracksRun2010.HiTrackCandidates_cff')
@@ -48,15 +52,15 @@ process.output = cms.OutputModule("PoolOutputModule",
 
 import HLTrigger.HLTfilters.hltHighLevel_cfi
 process.hltMinBiasHF = HLTrigger.HLTfilters.hltHighLevel_cfi.hltHighLevel.clone()
-process.hltMinBiasHF.HLTPaths = ["HLT_HIMinBiasHF"]
+process.hltMinBiasHF.HLTPaths = ["HLT_HIMinBiasHfOrBSC_Core"]
 
 # Other statements
 process.GlobalTag.globaltag = 'GR10_P_V12::All'
 
 # Path and EndPath definitions
 
-process.filter_step = cms.Path( process.hltMinBiasHF )
-
+process.filter_step = cms.Path( process.hltMinBiasHF * process.collisionEventSelection )
+process.trksel_step  = cms.Path(process.hiGoodTracksSelection)
 process.lowptpixel_step = cms.Path(process.lowPtPixelTrackReco)
 process.merge_step = cms.Path(process.multipleMergedTracks)
 process.candidates_step = cms.Path( process.hiAllTrackCandidates)
@@ -66,6 +70,7 @@ process.out_step = cms.EndPath(process.output)
 # Schedule definition
 process.schedule = cms.Schedule(
     process.filter_step,
+    process.trksel_step,
     process.lowptpixel_step,
     process.merge_step,
     process.candidates_step,
