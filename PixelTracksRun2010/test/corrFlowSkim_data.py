@@ -34,7 +34,7 @@ process.options = cms.untracked.PSet(
 # Input source
 process.source = cms.Source("PoolSource",
     fileNames = cms.untracked.vstring( 
-'file:/scratch/appelte1/150431-test/948A312C-3EEB-DF11-8811-0030487CAF0E.root'
+'/store/hidata/HIRun2010/HICorePhysics/RECO/PromptReco-v3/000/150/887/2A14D410-44EE-DF11-949B-003048F118DE.root'
   )
 )
 
@@ -45,7 +45,7 @@ process.output = cms.OutputModule("PoolOutputModule",
     SelectEvents = cms.untracked.PSet(
                 SelectEvents = cms.vstring('filter_step')
                 ),
-    fileName = cms.untracked.string( 'file:/scratch/appelte1/skim_data_test.root')
+    fileName = cms.untracked.string( 'file:skim_data_test.root')
 )
 
 #Trigger Selection
