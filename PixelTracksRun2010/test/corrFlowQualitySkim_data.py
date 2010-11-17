@@ -25,7 +25,7 @@ process.load('Appeltel.PixelTracksRun2010.HICorrFlowSkimEventContent_cff')
 
 
 process.maxEvents = cms.untracked.PSet(
-    input = cms.untracked.int32(-1)
+    input = cms.untracked.int32(1)
 )
 process.options = cms.untracked.PSet(
 )
