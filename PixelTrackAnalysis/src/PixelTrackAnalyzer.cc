@@ -13,7 +13,7 @@
 //
 // Original Author:  Eric A. Appelt
 //         Created:  Fri Nov 12 04:59:50 EST 2010
-// $Id: PixelTrackAnalyzer.cc,v 1.1 2010/11/12 10:50:53 appeltel Exp $
+// $Id: PixelTrackAnalyzer.cc,v 1.2 2010/11/12 11:40:50 appeltel Exp $
 //
 //
 
@@ -77,6 +77,12 @@ class PixelTrackAnalyzer : public edm::EDAnalyzer {
       TH1F* pixeldzerr_; 
  
       TH1F* pixelptcent_[10];
+      TH1F* pixelphicent_[10];
+      TH1F* pixeletacent_[10];
+      TH1F* pixeld0cent_[10]; 
+      TH1F* pixeld0errcent_[10]; 
+      TH1F* pixeldzcent_[10]; 
+      TH1F* pixeldzerrcent_[10]; 
 
       TH1I* centbins_;
 
@@ -90,18 +96,36 @@ etaCut_(iConfig.getParameter<double>("etaCut"))
 
   edm::Service<TFileService> fs;
 
-  pixelpt_  = fs->make<TH1F>("pixelpt", "pixelpt",    200,  0.,10.);
-  pixelphi_ = fs->make<TH1F>("pixelphi", "pixelphi", 200, -3.15, 3.15);
-  pixeleta_ = fs->make<TH1F>("pixeleta", "pixeleta", 200, -2.5, 2.5);
-  pixeld0_ = fs->make<TH1F>("pixeld0", "pixeld0", 200, -0.25, 0.25);
-  pixeld0err_ = fs->make<TH1F>("pixeld0err", "pixeld0err", 200, 0, 5);
-  pixeldz_ = fs->make<TH1F>("pixeldz", "pixeldz", 200, -0.25, 0.25);
-  pixeldzerr_ = fs->make<TH1F>("pixeldzerr", "pixeldzerr", 200, 0, 5);
+  char centStrings[10][256] = { "0-10%", "10-20%", "20-30%", "30-40%",
+       "40-50%", "50-60%", "60-70%", "70-80%", "80-90%", "90-100%" };
+
+  pixelpt_  = fs->make<TH1F>("pixelpt", "Pixel Track p_{T} Spectrum",    200,  0.,10.);
+  pixelphi_ = fs->make<TH1F>("pixelphi", "Pixel Track #phi Distribution", 200, -3.15, 3.15);
+  pixeleta_ = fs->make<TH1F>("pixeleta", "Pixel Track #eta Distribution", 200, -2.5, 2.5);
+  pixeld0_ = fs->make<TH1F>("pixeld0", "Pixel Track Transverse DCA Distribution", 200, -0.25, 0.25);
+  pixeld0err_ = fs->make<TH1F>("pixeld0err", "Pixel Track Transverse DCA Significance", 200, 0, 5);
+  pixeldz_ = fs->make<TH1F>("pixeldz", "Pixel Track Longitudinal DCA Distribution", 200, -0.25, 0.25);
+  pixeldzerr_ = fs->make<TH1F>("pixeldzerr", "Pixel Track Longitudinal DCA Significance", 200, 0, 5);
   for( int i = 0; i<10; i++)
   {
-    pixelptcent_[i] = fs->make<TH1F>(Form("pixelptcent%d",i),Form("pixelptcent%d",i), 200, 0., 10. );
+    pixelptcent_[i] = fs->make<TH1F>(Form("pixelptcent%d",i),
+        Form("Pixel Track p_{T} Spectrum Centrality Range %s",centStrings[i]), 200, 0., 10. );
+    pixelphicent_[i] = fs->make<TH1F>(Form("pixelphicent%d",i),
+        Form("Pixel Track #phi Distribution Centrality Range %s",centStrings[i]), 200, -3.15, 3.15 );
+    pixeletacent_[i] = fs->make<TH1F>(Form("pixeletacent%d",i),
+        Form("Pixel Track #eta Distribution Centrality Range %s",centStrings[i]), 200, -2.5, 2.5 );
+    pixeld0cent_[i] = fs->make<TH1F>(Form("pixeld0cent%d",i),
+        Form("Pixel Track Transverse DCA  Distribution Centrality Range %s",centStrings[i]), 200, -0.25, 0.25 );
+    pixeld0errcent_[i] = fs->make<TH1F>(Form("pixeld0errcent%d",i),
+        Form("Pixel Track Transverse DCA  Significance Centrality Range %s",centStrings[i]), 200, 0, 5 );
+    pixeldzcent_[i] = fs->make<TH1F>(Form("pixeldzcent%d",i),
+        Form("Pixel Track Longitudinal DCA  Distribution Centrality Range %s",centStrings[i]), 200, -0.25, 0.25 );
+    pixeldzerrcent_[i] = fs->make<TH1F>(Form("pixeldzerrcent%d",i),
+        Form("Pixel Track Longitudinal DCA  Significance Centrality Range %s",centStrings[i]), 200, 0, 5 );
+   
+
   }
-  centbins_ = fs->make<TH1I>("centbins","centbins", 40, 0, 39);
+  centbins_ = fs->make<TH1I>("centbins","Centrality Distribution", 40, 0, 39);
 
   // safety
   centrality_ = 0;
@@ -164,6 +188,11 @@ PixelTrackAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
        pixeleta_->Fill( tk->eta() );
        pixelphi_->Fill( tk->phi() );
 
+       pixelptcent_[bin/4]->Fill( tk->pt() );
+       pixeletacent_[bin/4]->Fill( tk->eta() );
+       pixelphicent_[bin/4]->Fill( tk->phi() );
+
+
        double d0=0.0, dz=0.0, d0sigma=0.0, dzsigma=0.0;
        d0 = -1.*tk->dxy(vtxPoint);
        dz = tk->dz(vtxPoint);
@@ -174,6 +203,11 @@ PixelTrackAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
        pixeldz_->Fill( dz );
        pixeldzerr_->Fill( fabs(dz/dzsigma) );
        pixeld0err_->Fill( fabs(d0/d0sigma) ); 
+
+       pixeld0cent_[bin/4]->Fill( d0 );
+       pixeldzcent_[bin/4]->Fill( dz );
+       pixeldzerrcent_[bin/4]->Fill( fabs(dz/dzsigma) );
+       pixeld0errcent_[bin/4]->Fill( fabs(d0/d0sigma) ); 
 
        pixelptcent_[bin/4]->Fill ( tk->pt() );
 
