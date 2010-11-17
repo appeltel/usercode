@@ -18,7 +18,7 @@ HICorrFlowEventContent = cms.PSet(
         'keep recoCaloClusters_*_*_*',
         'keep *_hiGenParticles_*_*',
         'keep *_generator_*_*',
-        'keep recoGenJets_*_*'
+        'keep recoGenJets_*_*_*'
     )
 )
  
