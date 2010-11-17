@@ -66,6 +66,12 @@ class SiStripClusterAnalyzer : public edm::EDAnalyzer {
       CentralityProvider * centrality_;
  
       TH1I* clusterwidth_[10];
+      TH1I* clusterADCtot_[10];
+
+      TH1I* clusterADCtotTIB_;
+      TH1I* clusterADCtotTOB_;
+      TH1I* clusterADCtotTID_;
+      TH1I* clusterADCtotTEC_;
 
       TH1I* centbins_;
 
@@ -83,18 +89,37 @@ etaMax_(iConfig.getParameter<double>("etaMax")),
 onlyCount_(iConfig.getParameter<bool>("onlyCount"))
 {
 
+  char centStrings[10][256] = { "0-10%", "10-20%", "20-30%", "30-40%",
+       "40-50%", "50-60%", "60-70%", "70-80%", "80-90%", "90-100%" };
+
+
   edm::Service<TFileService> fs;
 
   for( int i = 0; i<10; i++)
   {
-    clusterwidth_[i] = fs->make<TH1I>(Form("clusterwidth%d",i),Form("clusterwidth%d",i), 250, 1, 250 );
+    clusterwidth_[i] = fs->make<TH1I>(Form("clusterwidth%d",i),
+        Form("Cluster Widths for Centrality Range %s",centStrings[i]), 250, 1, 250 );
+    clusterADCtot_[i] = fs->make<TH1I>(Form("clusterADCtot%d",i),
+        Form("Uncorrected Cluster ADC Count for Centrality Range %s",centStrings[i]), 
+        500, 0, 3000 );
   }
+
+  clusterADCtotTIB_ = fs->make<TH1I>("clusterADCtotTIB",
+        "Uncorrected Cluster ADC Count for the TIB", 500, 0, 3000 );
+  clusterADCtotTOB_ = fs->make<TH1I>("clusterADCtotTOB",
+        "Uncorrected Cluster ADC Count for the TOB", 500, 0, 3000 );
+  clusterADCtotTID_ = fs->make<TH1I>("clusterADCtotTID",
+        "Uncorrected Cluster ADC Count for the TID", 500, 0, 3000 );
+  clusterADCtotTEC_ = fs->make<TH1I>("clusterADCtotTEC",
+        "Uncorrected Cluster ADC Count for the TEC", 500, 0, 3000 );
+
   centbins_ = fs->make<TH1I>("centbins","centbins", 40, 0, 39);
 
   widthDetId_ = fs->make<TH2F>("widthDetId","Cluster Widths vs Detector ID", 250, 1., 250., 500, 0., 66000.0); 
 
   clusterCountPixelStrip_ = fs->make<TH2F>("clusterCountPixelStrip","Pixel Clusters versus Strip Clusters",
                                           200, 0., 70000., 200, 0., 400000.);
+
 
   // safety
   centrality_ = 0;
@@ -148,6 +173,30 @@ SiStripClusterAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
 
           widthDetId_->Fill( laststrip-firststrip, it->detId() % 65536 );
 
+          int totalADC = 0;
+          std::vector<uint8_t>::const_iterator adc;
+          for( adc = clus->amplitudes().begin(); adc != clus->amplitudes().end(); ++adc )
+            totalADC += *adc;
+          clusterADCtot_[bin/4]->Fill( totalADC );
+
+          SiStripDetId sid( it->detId() );
+
+
+          switch ( sid.subdetId() ) 
+          {
+            case SiStripDetId::TIB:
+              clusterADCtotTIB_->Fill( totalADC );
+              break;
+            case SiStripDetId::TOB:
+              clusterADCtotTOB_->Fill( totalADC );
+              break;
+            case SiStripDetId::TID:
+              clusterADCtotTID_->Fill( totalADC );
+              break;
+            case SiStripDetId::TEC:
+              clusterADCtotTEC_->Fill( totalADC );
+              break;
+          } 
 
        }
      }
