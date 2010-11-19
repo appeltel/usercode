@@ -62,10 +62,14 @@ process.source = cms.Source("PoolSource",
     )
 )
 
+
 process.pixelTrackAna = cms.EDAnalyzer('PixelTrackAnalyzer',
     pixelSrc = cms.InputTag('hiLowPtPixelTracks'),
     vertexSrc = cms.InputTag('hiSelectedVertex'),
+    genSrc = cms.InputTag('hiGenParticles'),
+    doGenerator = cms.bool(False),
     etaCut = cms.double(1.0),
+    ptMin = cms.double(0.25)
 
 )
 

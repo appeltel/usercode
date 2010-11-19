@@ -13,7 +13,7 @@
 //
 // Original Author:  Eric A. Appelt
 //         Created:  Fri Nov 12 04:59:50 EST 2010
-// $Id: PixelTrackAnalyzer.cc,v 1.2 2010/11/12 11:40:50 appeltel Exp $
+// $Id: PixelTrackAnalyzer.cc,v 1.3 2010/11/17 12:49:16 appeltel Exp $
 //
 //
 
@@ -36,6 +36,8 @@
 #include "FWCore/ServiceRegistry/interface/Service.h"
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
 
+#include <DataFormats/HepMCCandidate/interface/GenParticle.h>
+#include <DataFormats/HepMCCandidate/interface/GenParticleFwd.h>
 
 #include <DataFormats/TrackReco/interface/Track.h>
 #include <DataFormats/VertexReco/interface/Vertex.h>
@@ -61,8 +63,12 @@ class PixelTrackAnalyzer : public edm::EDAnalyzer {
 
       edm::InputTag pixelSrc_;
       edm::InputTag vertexSrc_;
+      edm::InputTag genSrc_;
+
+      bool doGenerator_;
 
       double etaCut_;
+      double ptMin_;
 
       CentralityProvider * centrality_;
 
@@ -84,6 +90,9 @@ class PixelTrackAnalyzer : public edm::EDAnalyzer {
       TH1F* pixeldzcent_[10]; 
       TH1F* pixeldzerrcent_[10]; 
 
+      TH1F* genptcent_[10];
+      TH1F* genphicent_[10];
+      TH1F* genetacent_[10];
       TH1I* centbins_;
 
 };
@@ -91,7 +100,10 @@ class PixelTrackAnalyzer : public edm::EDAnalyzer {
 PixelTrackAnalyzer::PixelTrackAnalyzer(const edm::ParameterSet& iConfig):
 pixelSrc_(iConfig.getParameter<edm::InputTag>("pixelSrc")),
 vertexSrc_(iConfig.getParameter<edm::InputTag>("vertexSrc")),
-etaCut_(iConfig.getParameter<double>("etaCut"))
+genSrc_(iConfig.getParameter<edm::InputTag>("genSrc")),
+doGenerator_(iConfig.getParameter<bool>("doGenerator")),
+etaCut_(iConfig.getParameter<double>("etaCut")),
+ptMin_(iConfig.getParameter<double>("ptMin"))
 {
 
   edm::Service<TFileService> fs;
@@ -123,6 +135,12 @@ etaCut_(iConfig.getParameter<double>("etaCut"))
     pixeldzerrcent_[i] = fs->make<TH1F>(Form("pixeldzerrcent%d",i),
         Form("Pixel Track Longitudinal DCA  Significance Centrality Range %s",centStrings[i]), 200, 0, 5 );
    
+    genptcent_[i] = fs->make<TH1F>(Form("genptcent%d",i),
+        Form("Charged GenParticle p_{T} Spectrum Centrality Range %s",centStrings[i]), 200, 0., 10. );
+    genphicent_[i] = fs->make<TH1F>(Form("genphicent%d",i),
+        Form("Charged GenParticle #phi Distribution Centrality Range %s",centStrings[i]), 200, -3.15, 3.15 );
+    genetacent_[i] = fs->make<TH1F>(Form("genetacent%d",i),
+        Form("Charged GenParticle #eta Distribution Centrality Range %s",centStrings[i]), 200, -2.5, 2.5 );
 
   }
   centbins_ = fs->make<TH1I>("centbins","Centrality Distribution", 40, 0, 39);
@@ -182,7 +200,7 @@ PixelTrackAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
    std::vector<reco::Track>::const_iterator tk = tracks->begin();
    for ( ; tk != tracks->end(); ++tk )
    {
-     if ( fabs( tk->eta() ) <= etaCut_ )
+     if ( fabs( tk->eta() ) <= etaCut_ && tk->pt() >= ptMin_ )
      {
        pixelpt_->Fill( tk->pt() );
        pixeleta_->Fill( tk->eta() );
@@ -214,6 +232,24 @@ PixelTrackAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
      }
   }
 
+  if ( doGenerator_ )
+  {
+
+    Handle<reco::GenParticleCollection > gens;
+    iEvent.getByLabel(genSrc_, gens);
+
+    reco::GenParticleCollection::const_iterator q;
+    for( q = gens->begin(); q != gens->end(); ++q )
+    {
+       if ( q->charge() != 0 && q->status() == 1 )
+       {
+         genptcent_[bin/4]->Fill( q->pt() );
+         genetacent_[bin/4]->Fill( q->eta() );
+         genphicent_[bin/4]->Fill( q->phi() );
+       }
+
+    }
+  }
 
 }
 
@@ -231,3 +267,4 @@ PixelTrackAnalyzer::endJob() {
 
 //define this as a plug-in
 DEFINE_FWK_MODULE(PixelTrackAnalyzer);
+
