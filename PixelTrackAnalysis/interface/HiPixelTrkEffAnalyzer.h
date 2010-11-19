@@ -17,6 +17,8 @@
 #include "DataFormats/BeamSpot/interface/BeamSpot.h"
 #include "Geometry/TrackerGeometryBuilder/interface/TrackerGeometry.h"
 #include "Appeltel/PixelTrackAnalysis/interface/HiPixelTrkEffHistograms.h"
+#include "DataFormats/HeavyIonEvent/interface/CentralityProvider.h"
+
 
 // define track efficiency analyzer class
 class HiPixelTrkEffAnalyzer : public edm::EDAnalyzer {
@@ -51,9 +53,9 @@ class HiPixelTrkEffAnalyzer : public edm::EDAnalyzer {
       edm::Handle<reco::BeamSpot> beamSpotH;
       bool doAssociation_;
       bool hasSimInfo_;
-      bool pixelMultMode_;
-      bool useJetEt_;
-      
+
+      CentralityProvider * centrality_;
+     
       HiPixelTrkEffHistograms *histograms;
       edm::Service<TFileService> f;
 

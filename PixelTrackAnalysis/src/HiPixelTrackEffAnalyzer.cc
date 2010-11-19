@@ -41,6 +41,7 @@ HiPixelTrkEffAnalyzer::HiPixelTrkEffAnalyzer(const edm::ParameterSet& iConfig)
   hasSimInfo_(iConfig.getUntrackedParameter<bool>("hasSimInfo",false))
 {
 
+  centrality_ = 0;
   histograms = new HiPixelTrkEffHistograms(iConfig);
 
 }
@@ -74,7 +75,6 @@ HiPixelTrkEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
 
   int cbin = 39;
 
-  CentralityProvider * centrality_;
   if(!centrality_) centrality_ = new CentralityProvider(iSetup);
 
   centrality_->newEvent(iEvent,iSetup);   
