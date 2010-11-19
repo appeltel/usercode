@@ -9,6 +9,12 @@
 <use   name="DataFormats/HeavyIonEvent"/>
 <use   name="CommonTools/Utils"/>
 <use   name="CommonTools/UtilAlgos"/>
+<use name="SimDataFormats/TrackingAnalysis"/>
+<use name="SimTracker/Records"/>
+<use name="SimTracker/TrackAssociation"/>
+<use name="DataFormats/RecoCandidate"/>
+<use name="Geometry/TrackerGeometryBuilder"/>
+
 <flags EDM_PLUGIN="1" />
 <export>
    <lib name="AppeltelPixelTrackAnalysis"/>
