@@ -9,7 +9,7 @@ process.load('Configuration.StandardSequences.GeometryDB_cff')
 process.load('Configuration.StandardSequences.MagneticField_38T_cff')
 process.load('Configuration.StandardSequences.ReconstructionHeavyIons_cff')
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(500) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(5000) )
 
 process.GlobalTag.globaltag = 'GR10_P_V12::All'
 
@@ -102,6 +102,7 @@ process.source = cms.Source("PoolSource",
 process.clusterAna = cms.EDAnalyzer('SiStripClusterAnalyzer',
     stripClusterSrc = cms.InputTag('siStripClusters'),
     pixelClusterSrc = cms.InputTag('siPixelClusters'),
+    trackSrc = cms.InputTag('hiSelectedTracks'),
     etaMin = cms.double(-99.0),
     etaMax = cms.double(99.0),
     onlyCount = cms.bool(False)

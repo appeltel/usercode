@@ -30,6 +30,9 @@
 #include "DataFormats/Common/interface/DetSetVector.h"
 #include "DataFormats/Common/interface/DetSetVectorNew.h"
 
+#include <DataFormats/TrackReco/interface/Track.h> 
+#include <DataFormats/TrackReco/interface/TrackFwd.h> 
+
 #include "DataFormats/SiStripDetId/interface/SiStripDetId.h"
 #include "DataFormats/SiStripDetId/interface/TECDetId.h"
 #include "DataFormats/SiStripDetId/interface/TIBDetId.h"
@@ -55,6 +58,7 @@ class SiStripClusterAnalyzer : public edm::EDAnalyzer {
 
       edm::InputTag stripClusterSrc_;
       edm::InputTag pixelClusterSrc_;
+      edm::InputTag trackSrc_;
 
       double etaMin_;
       double etaMax_;
@@ -77,6 +81,8 @@ class SiStripClusterAnalyzer : public edm::EDAnalyzer {
 
       TH2F* widthDetId_;
 
+      TH2I* trackClusterModules_;
+
       TH2F* clusterCountPixelStrip_;
 
 };
@@ -84,6 +90,7 @@ class SiStripClusterAnalyzer : public edm::EDAnalyzer {
 SiStripClusterAnalyzer::SiStripClusterAnalyzer(const edm::ParameterSet& iConfig):
 stripClusterSrc_(iConfig.getParameter<edm::InputTag>("stripClusterSrc")),
 pixelClusterSrc_(iConfig.getParameter<edm::InputTag>("pixelClusterSrc")),
+trackSrc_(iConfig.getParameter<edm::InputTag>("trackSrc")),
 etaMin_(iConfig.getParameter<double>("etaMin")),
 etaMax_(iConfig.getParameter<double>("etaMax")),
 onlyCount_(iConfig.getParameter<bool>("onlyCount"))
@@ -120,6 +127,8 @@ onlyCount_(iConfig.getParameter<bool>("onlyCount"))
   clusterCountPixelStrip_ = fs->make<TH2F>("clusterCountPixelStrip","Pixel Clusters versus Strip Clusters",
                                           200, 0., 70000., 200, 0., 400000.);
 
+  trackClusterModules_ =fs->make<TH2I>("trackClusterModules",
+      "Tracks on Module versus Clusters on Module", 101,0,100,26,0,25);
 
   // safety
   centrality_ = 0;
@@ -160,13 +169,46 @@ SiStripClusterAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
 
    stripCount += clusters->dataSize();
 
+
    if( ! onlyCount_ )
    {
+
+     // Loop over tracks and make a map of the number of track hits on each module
+
+     edm::Handle<reco::TrackCollection> tracks;
+     iEvent.getByLabel(trackSrc_, tracks);
+     
+     std::map<int,int> tracksOnModule;
+ 
+     for( reco::TrackCollection::const_iterator tk  = tracks->begin();
+          tk != tracks->end(); ++tk )
+     {
+       trackingRecHit_iterator hit = tk->recHitsBegin();
+       for( ; hit != tk->recHitsEnd(); ++hit )
+       {
+         std::map<int,int>::iterator iter = tracksOnModule.find( (*hit)->geographicalId() );
+         if( iter != tracksOnModule.end() )
+         {
+           iter->second = iter->second + 1;
+         } else {
+           tracksOnModule.insert( std::pair<int,int>( (*hit)->geographicalId() , 1 ) );
+         }
+
+       }
+     }  
+
+
+     // Loop over clusters
+
      edmNew::DetSetVector<SiStripCluster>::const_iterator it = clusters->begin();
      for ( ; it != clusters->end(); ++it )
      {
+       int clustersOnModule = 0;
+
        for ( edmNew::DetSet<SiStripCluster>::const_iterator clus = it->begin(); clus != it->end(); ++clus)
        {
+          clustersOnModule++;
+
           int firststrip = clus->firstStrip();
           int laststrip = firststrip + clus->amplitudes().size();
           clusterwidth_[bin/4]->Fill( laststrip-firststrip);     
@@ -181,7 +223,7 @@ SiStripClusterAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
 
           SiStripDetId sid( it->detId() );
 
-
+    
           switch ( sid.subdetId() ) 
           {
             case SiStripDetId::TIB:
@@ -197,8 +239,17 @@ SiStripClusterAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
               clusterADCtotTEC_->Fill( totalADC );
               break;
           } 
-
        }
+
+       std::map<int,int>::iterator iter = tracksOnModule.find( it->detId() );
+       if( iter != tracksOnModule.end() )
+       {
+         trackClusterModules_->Fill( clustersOnModule, iter->second); 
+       } else {
+         trackClusterModules_->Fill( clustersOnModule, 0);
+       }
+       
+
      }
    }
 
