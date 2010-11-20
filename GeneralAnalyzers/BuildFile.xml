@@ -15,6 +15,9 @@
 <use name="DataFormats/SiStripCluster"/>
 <use name="DataFormats/SiPixelCluster"/>
 <use   name="DataFormats/HeavyIonEvent"/>
+<use   name="DataFormats/TrackReco"/>
+<use   name="DataFormats/VertexReco"/>
+<use   name="DataFormats/Math"/>
 <flags EDM_PLUGIN="1"/>
 <export>
    <lib name="AppeltelGeneralAnalyzers"/>
