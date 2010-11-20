@@ -21,7 +21,7 @@ process.load('Appeltel.PixelTracksRun2010.HICorrFlowSkimEventContent_cff')
 
 
 process.maxEvents = cms.untracked.PSet(
-    input = cms.untracked.int32(10)
+    input = cms.untracked.int32(5)
 )
 process.options = cms.untracked.PSet(
 )
@@ -30,8 +30,8 @@ process.options = cms.untracked.PSet(
 # Input source
 process.source = cms.Source("PoolSource",
     fileNames = cms.untracked.vstring( 
-#'file:/scratch/appelte1/pixelMC/Hydjet_Bass_MinBias_2760GeV_1.root' #T3_US_Vanderbilt
-'file:/net/hidsk0001/d00/scratch/appelte1/Hydjet_Bass_MinBias_2760GeV_1.root' #T2_US_MIT
+'file:/scratch/appelte1/pixelMC/Hydjet_Bass_MinBias_2760GeV_1.root' #T3_US_Vanderbilt
+#'file:/net/hidsk0001/d00/scratch/appelte1/Hydjet_Bass_MinBias_2760GeV_1.root' #T2_US_MIT
 )
 )
 
