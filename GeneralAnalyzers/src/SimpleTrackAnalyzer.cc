@@ -13,7 +13,7 @@
 //
 // Original Author:  Eric Appelt
 //         Created:  Fri Nov 19 16:55:16 CST 2010
-// $Id$
+// $Id: SimpleTrackAnalyzer.cc,v 1.1 2010/11/20 11:23:38 appeltel Exp $
 //
 //
 
@@ -111,23 +111,28 @@ vertexSrc_(iConfig.getParameter<edm::InputTag>("vertexSrc"))
 
   for ( int i = 0; i<10; i++ )
   {
-    chit_[i]  = fs->make<TH1I>("hit",Form("Tracks by Number of Valid Hits Centrality %s",centString[i]),
+    chit_[i]  = fs->make<TH1I>(Form("chit%d",i),
+                Form("Tracks by Number of Valid Hits Centrality %s",centString[i]),
                                31,  0,30);
     chit_[i]->GetXaxis()->SetTitle("Number of Valid Hits");
 
-    cpt_[i] = fs->make<TH1F>("pt",Form("p_{T} Spectrum Centrality %s",centString[i]),100,0,20);
+    cpt_[i] = fs->make<TH1F>(Form("cpt%d",i),
+              Form("p_{T} Spectrum Centrality %s",centString[i]),100,0,20);
     cpt_[i]->GetXaxis()->SetTitle("p_{T} (GeV/c)");
 
-    ceta_[i] = fs->make<TH1F>("eta",Form("Pseudorapidity Distribution Centrality %s",centString[i]),50,-2.5,2.5);
+    ceta_[i] = fs->make<TH1F>(Form("ceta%d",i),
+               Form("Pseudorapidity Distribution Centrality %s",centString[i]),50,-2.5,2.5);
     ceta_[i]->GetXaxis()->SetTitle("#eta");
 
-    cphi_[i] = fs->make<TH1F>("phi",Form("Azimuthal Distribution Centrality %s",centString[i]),100,-3.15,3.15);
+    cphi_[i] = fs->make<TH1F>(Form("cphi%d",i),
+               Form("Azimuthal Distribution Centrality %s",centString[i]),100,-3.15,3.15);
     cphi_[i]->GetXaxis()->SetTitle("#phi");
 
-    cdxyerr_[i] = fs->make<TH1F>("dxyerr",Form("Transverse DCA Significance Centrality %s",centString[i]),100,-6,6);
+    cdxyerr_[i] = fs->make<TH1F>(Form("cdxyerr%d",i),
+                  Form("Transverse DCA Significance Centrality %s",centString[i]),100,-6,6);
     cdxyerr_[i]->GetXaxis()->SetTitle("dxy / #sigma_{dxy}");
 
-    chit_dxyerr_[i] = fs->make<TH2F>("hit_dxyerr", 
+    chit_dxyerr_[i] = fs->make<TH2F>(Form("chit_dxyerr%d",i), 
                   Form("Transverse DCA Significance versus Number of Valid Hits Centrality %s",centString[i]),
                                30,0,30,100,-6,6);
     chit_dxyerr_[i]->GetYaxis()->SetTitle("dxy / #sigma_{dxy}");
