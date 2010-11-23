@@ -60,20 +60,22 @@ process.GlobalTag.globaltag = 'GR10_P_V12::All'
 # Path and EndPath definitions
 
 process.filter_step = cms.Path( process.hltMinBiasHF * process.collisionEventSelection )
-process.trksel_step  = cms.Path(process.hiGoodTracksSelection)
-process.lowptpixel_step = cms.Path(process.lowPtPixelTrackReco)
-process.merge_step = cms.Path(process.multipleMergedTracks)
-process.candidates_step = cms.Path( process.hiAllTrackCandidates)
+process.reco_step = cms.Path( 
+   process.hltMinBiasHF *
+   process.collisionEventSelection *
+   process.hiGoodTracksSelection *
+   process.lowPtPixelTrackReco *
+   process.multipleMergedTracks *
+   process.hiAllTrackCandidates
+)
+
 process.endjob_step = cms.Path(process.endOfProcess)
 process.out_step = cms.EndPath(process.output)
 
 # Schedule definition
 process.schedule = cms.Schedule(
     process.filter_step,
-    process.trksel_step,
-    process.lowptpixel_step,
-    process.merge_step,
-    process.candidates_step,
+    process.reco_step,
     process.endjob_step,
     process.out_step
 )
