@@ -8,7 +8,6 @@ from RecoHI.HiTracking.HITrackingRegionProducer_cfi import *
 from Appeltel.PixelTracksRun2010.HILowPtTrackingRegionProducer_cfi import *
 
 from RecoPixelVertexing.PixelTrackFitting.PixelFitterByConformalMappingAndLine_cfi import *
-process.hiLowPtPixelTracks.FitterPSet = cms.PSet ( PixelFitterByConformalMappingAndLine )
 
 hiConformalPixelTracks = cms.EDProducer("PixelTrackProducer",
 
