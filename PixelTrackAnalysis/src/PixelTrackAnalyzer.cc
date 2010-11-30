@@ -13,7 +13,7 @@
 //
 // Original Author:  Eric A. Appelt
 //         Created:  Fri Nov 12 04:59:50 EST 2010
-// $Id: PixelTrackAnalyzer.cc,v 1.3 2010/11/17 12:49:16 appeltel Exp $
+// $Id: PixelTrackAnalyzer.cc,v 1.4 2010/11/19 21:02:53 appeltel Exp $
 //
 //
 
@@ -81,6 +81,8 @@ class PixelTrackAnalyzer : public edm::EDAnalyzer {
       TH1F* pixeld0err_; 
       TH1F* pixeldz_; 
       TH1F* pixeldzerr_; 
+      TH1F* pixelchi2_;
+      TH1F* pixelnhit_;
  
       TH1F* pixelptcent_[10];
       TH1F* pixelphicent_[10];
@@ -89,6 +91,9 @@ class PixelTrackAnalyzer : public edm::EDAnalyzer {
       TH1F* pixeld0errcent_[10]; 
       TH1F* pixeldzcent_[10]; 
       TH1F* pixeldzerrcent_[10]; 
+      TH1F* pixelchi2cent_[10];
+      TH1F* pixelnhitcent_[10];
+
 
       TH1F* genptcent_[10];
       TH1F* genphicent_[10];
@@ -118,6 +123,9 @@ ptMin_(iConfig.getParameter<double>("ptMin"))
   pixeld0err_ = fs->make<TH1F>("pixeld0err", "Pixel Track Transverse DCA Significance", 200, 0, 5);
   pixeldz_ = fs->make<TH1F>("pixeldz", "Pixel Track Longitudinal DCA Distribution", 200, -0.25, 0.25);
   pixeldzerr_ = fs->make<TH1F>("pixeldzerr", "Pixel Track Longitudinal DCA Significance", 200, 0, 5);
+  pixelchi2_ = fs->make<TH1F>("pixelchi2", "Pixel Track #chi^2 / n.d.o.f. Distribution",200,0.,100.);
+  pixelnhit_ = fs->make<TH1F>("pixelnhit", "Pixel Track Valid Hit Distribution",30.,0.,30.);
+
   for( int i = 0; i<10; i++)
   {
     pixelptcent_[i] = fs->make<TH1F>(Form("pixelptcent%d",i),
@@ -134,7 +142,10 @@ ptMin_(iConfig.getParameter<double>("ptMin"))
         Form("Pixel Track Longitudinal DCA  Distribution Centrality Range %s",centStrings[i]), 200, -0.25, 0.25 );
     pixeldzerrcent_[i] = fs->make<TH1F>(Form("pixeldzerrcent%d",i),
         Form("Pixel Track Longitudinal DCA  Significance Centrality Range %s",centStrings[i]), 200, 0, 5 );
-   
+    pixelchi2cent_[i] = fs->make<TH1F>(Form("pixelchi2cent%d",i), 
+        Form("Pixel Track #chi^2 / n.d.o.f. Distribution Centrality Range %s",centStrings[i]),200,0.,100.);
+    pixelnhitcent_[i] = fs->make<TH1F>(Form("pixelnhitcent%d",i), 
+        Form("Pixel Track Valid Hit Distribution Centrality Range %s",centStrings[i]),30.,0.,30.);
     genptcent_[i] = fs->make<TH1F>(Form("genptcent%d",i),
         Form("Charged GenParticle p_{T} Spectrum Centrality Range %s",centStrings[i]), 200, 0., 10. );
     genphicent_[i] = fs->make<TH1F>(Form("genphicent%d",i),
@@ -205,11 +216,14 @@ PixelTrackAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
        pixelpt_->Fill( tk->pt() );
        pixeleta_->Fill( tk->eta() );
        pixelphi_->Fill( tk->phi() );
+       pixelchi2_->Fill( tk->normalizedChi2() );
+       pixelnhit_->Fill( tk->numberOfValidHits() );
 
        pixelptcent_[bin/4]->Fill( tk->pt() );
        pixeletacent_[bin/4]->Fill( tk->eta() );
        pixelphicent_[bin/4]->Fill( tk->phi() );
-
+       pixelchi2cent_[bin/4]->Fill( tk->normalizedChi2() );
+       pixelnhitcent_[bin/4]->Fill( tk->numberOfValidHits() );
 
        double d0=0.0, dz=0.0, d0sigma=0.0, dzsigma=0.0;
        d0 = -1.*tk->dxy(vtxPoint);
