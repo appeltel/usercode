@@ -40,8 +40,8 @@ hiGoodMergedTracks = hiTrackListMerger.clone(
     TrackProducer1 = 'hiGoodTracks',
     TrackProducer2 = 'hiConformalPixelTracks',
     promoteTrackQuality = False,
-    trackCollection2MaxPt = 2.5,
-    trackCollection1MinPt = 2.0,
+    trackCollection2MaxPt = 1.8,
+    trackCollection1MinPt = 1.5,
     allowFirstHitShare = False
 )
 
