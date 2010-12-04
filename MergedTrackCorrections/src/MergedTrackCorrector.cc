@@ -107,6 +107,7 @@ float MergedTrackCorrector::effic( float pt, float eta, int cbin )
 {
    int etabin = (int) ( (eta+3.)*2. );
    int ptbin;
+   cbin = cbin / 4;
    if( pt < 1.5 )   
      ptbin = 0;
    if( pt >= 1.5 && pt < 1.8 )
@@ -126,6 +127,7 @@ float MergedTrackCorrector::fakeRate( float pt, float eta, int cbin )
 {
    int etabin = (int) ( (eta+3.)*2. );
    int ptbin;
+   cbin = cbin / 4;
    if( pt < 1.5 )   
      ptbin = 0;
    if( pt >= 1.5 && pt < 1.8 )
