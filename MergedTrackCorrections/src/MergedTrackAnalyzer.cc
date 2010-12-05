@@ -5,7 +5,7 @@
 
 // system include files
 #include <memory>
-
+#include <iostream>
 // user include files
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/Framework/interface/EDAnalyzer.h"
@@ -116,6 +116,7 @@ ptMin_(iConfig.getParameter<double>("ptMin"))
   trackdzerr_ = fs->make<TH1F>("trackdzerr", "Merged Track Longitudinal DCA Significance", 200, 0, 5);
   trackchi2_ = fs->make<TH1F>("trackchi2", "Merged Track #chi^2 / n.d.o.f. Distribution",200,0.,100.);
   tracknhit_ = fs->make<TH1F>("tracknhit", "Merged Track Valid Hit Distribution",30.,0.,30.);
+
 
   for( int i = 0; i<10; i++)
   {

@@ -1,6 +1,9 @@
 #include "Appeltel/MergedTrackCorrections/interface/MergedTrackCorrector.h"
 
 #include <fstream>
+#include <strstream>
+#include <iostream>
+
 using namespace std;
 
 /********************************************************
@@ -50,23 +53,34 @@ void MergedTrackCorrector::loadEffic( const char * filename )
 {
 
   edm::FileInPath fileInPath(filename);
+  
   ifstream inFile(fileInPath.fullPath().c_str());
 
-  while(inFile.eof() == false)
+  char buffer1[2048];
+
+
+  while(inFile.getline(buffer1, 2048))
   {
 
     int pt, eta, cent;
 
-    inFile >> pt;
-    inFile >> eta;
-    inFile >> cent;
+  istrstream ostr1(buffer1, 2048);
 
-    int parmax = (pt == 0) ? 3 : 4;
+    ostr1 >> pt;
+    ostr1 >> eta;
+    ostr1 >> cent;
+
+    int parmax = (pt == 0) ? 4 : 3;
     for( int par = 0; par<parmax; par++ )
-      inFile >> effic_[pt][eta][cent][par];
+    {
+      ostr1 >> effic_[pt][eta][cent][par];
+    }
   }
 
+
   inFile.close();
+
+
 }
 
 void MergedTrackCorrector::loadFakes()
@@ -79,19 +93,22 @@ void MergedTrackCorrector::loadFakes( const char * filename )
 
   edm::FileInPath fileInPath(filename);
   ifstream inFile(fileInPath.fullPath().c_str());
+  char buffer1[2048];
 
-  while(inFile.eof() == false)
+
+  while(inFile.getline(buffer1, 2048))
   {
 
     int pt, eta, cent;
+  istrstream ostr1(buffer1, 2048);
 
-    inFile >> pt;
-    inFile >> eta;
-    inFile >> cent;
+    ostr1 >> pt;
+    ostr1 >> eta;
+    ostr1 >> cent;
 
     int parmax = (pt==1) ? 3 : 4;
     for( int par = 0; par<parmax; par++ )
-      inFile >> fake_[pt][eta][cent][par];
+      ostr1 >> fake_[pt][eta][cent][par];
   }
 
   inFile.close();
@@ -132,15 +149,15 @@ float MergedTrackCorrector::fakeRate( float pt, float eta, int centbin )
      ptbin = 2;
 
    if ( ptbin == 2)
-     return fake_[ptbin][etabin][cbin][0]*pt*pt*pt + 
-            fake_[ptbin][etabin][cbin][1]*pt*pt + 
-            fake_[ptbin][etabin][cbin][2]*pt + 
-            fake_[ptbin][etabin][cbin][3]; 
+     return fake_[ptbin][etabin][cbin][3]*pt*pt*pt + 
+            fake_[ptbin][etabin][cbin][2]*pt*pt + 
+            fake_[ptbin][etabin][cbin][1]*pt + 
+            fake_[ptbin][etabin][cbin][0]; 
 
    if ( ptbin == 1)
-     return fake_[ptbin][etabin][cbin][0]*pt*pt + 
+     return fake_[ptbin][etabin][cbin][2]*pt*pt + 
             fake_[ptbin][etabin][cbin][1]*pt + 
-            fake_[ptbin][etabin][cbin][2];
+            fake_[ptbin][etabin][cbin][0];
 
    if ( ptbin == 0)
    {
@@ -185,9 +202,9 @@ float MergedTrackCorrector::effic( float pt, float eta, int centbin )
 
 
    if ( ptbin >0)
-     return effic_[ptbin][etabin][cbin][0]*pt*pt + 
+     return effic_[ptbin][etabin][cbin][2]*pt*pt + 
             effic_[ptbin][etabin][cbin][1]*pt + 
-            effic_[ptbin][etabin][cbin][2];
+            effic_[ptbin][etabin][cbin][0];
 
    if ( ptbin == 0)
    {
