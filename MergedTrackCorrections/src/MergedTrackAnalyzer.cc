@@ -80,11 +80,14 @@ class MergedTrackAnalyzer : public edm::EDAnalyzer {
       TH1F* trackchi2cent_[10];
       TH1F* tracknhitcent_[10];
 
+      TH1I* genStatus_;
 
       TH1F* genptcent_[10];
       TH1F* genphicent_[10];
       TH1F* genetacent_[10];
       TH1I* centbins_;
+
+      TH1F* weightmap_[3];
 
 };
 
@@ -148,8 +151,53 @@ ptMin_(iConfig.getParameter<double>("ptMin"))
   }
   centbins_ = fs->make<TH1I>("centbins","Centrality Distribution", 40, 0, 39);
 
+  genStatus_ = fs->make<TH1I>("genStatus","Status of Gen Particles",101,-10,90);
+
+/*
+  // Build Weight map histograms
+
+  std::vector<double> etaBins, ptBins;
+
+    // eta range 1 (-2.4 ~ -1.0)
+  static float etaMin1   = -2.4;
+  static float etaMax1   = -1.0;
+  static float etaWidth1 =  0.2;
+
+  for(double eta = etaMin1; eta < etaMax1 + etaWidth1/2; eta += etaWidth1)
+    etaBins.push_back(eta);
+
+  // eta range 2 (-1.0 ~ 1.0)
+  etaBins.push_back(-0.6);
+  etaBins.push_back(-0.2);
+  etaBins.push_back(0.2);
+  etaBins.push_back(0.6);
+
+  // eta range 1 (1.0 ~ 2.4) 
+  static float etaMin2   = 1.0;
+  static float etaMax2   = 2.4;
+  static float etaWidth2 =  0.2;
+
+  for(double eta = etaMin2; eta < etaMax2 + etaWidth2/2; eta += etaWidth2)
+    etaBins.push_back(eta);
+  
+  for( double pt = 0.0; pt<12.025, pt += 0.05 )
+    ptBins.push_back(pt);
+
+  for( int i = 0; i<3; i++)
+  {
+    
+*/
+
+  
+
+
+
+
   // safety
   centrality_ = 0;
+
+  
+
 }
 
 
@@ -236,8 +284,6 @@ MergedTrackAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
        trackdzerrcent_[bin/4]->Fill( fabs(dz/dzsigma), weight );
        trackd0errcent_[bin/4]->Fill( fabs(d0/d0sigma), weight ); 
 
-       trackptcent_[bin/4]->Fill ( tk->pt(), weight );
-
      }
   }
 
@@ -250,11 +296,16 @@ MergedTrackAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
     reco::GenParticleCollection::const_iterator q;
     for( q = gens->begin(); q != gens->end(); ++q )
     {
-       if ( q->charge() != 0 && q->status() == 1 )
+
+       genStatus_->Fill( q->status() );
+
+       if ( q->charge() != 0 && q->status() == 1 
+            && fabs( q->eta() ) <= etaCut_  && q->pt() >= ptMin_ )
        {
-         genptcent_[bin/4]->Fill( q->pt() );
-         genetacent_[bin/4]->Fill( q->eta() );
-         genphicent_[bin/4]->Fill( q->phi() );
+         genptcent_[bin/4]->Fill( q->pt(),1.0 );
+         genetacent_[bin/4]->Fill( q->eta(),1.0 );
+         genphicent_[bin/4]->Fill( q->phi(),1.0 );
+
        }
 
     }

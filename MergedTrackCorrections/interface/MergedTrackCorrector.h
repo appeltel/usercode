@@ -32,8 +32,8 @@ class MergedTrackCorrector
 
   private:
 
-   float effic_[3][12][10][4];
-   float fake_[3][12][10][4];
+   float effic_[3][19][3][4];
+   float fake_[3][19][3][4];
 
 };
 

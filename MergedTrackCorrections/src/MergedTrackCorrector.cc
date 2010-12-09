@@ -125,12 +125,12 @@ float MergedTrackCorrector::fakeRate( float pt, float eta, int centbin )
 {
 
    int etabin = 0;
-   if ( eta < -1.0 ) 
-     etabin = (int) (eta+2.4)*5;
+   if ( eta >= -2.4 && eta < -1.0 ) 
+     etabin = floor((eta+2.4)*5);
    if ( eta >= -1.0 && eta < 1.0 ) 
-     etabin = (int) ( (eta+1.0)*2.5 + 7 );
-   if ( eta >= 1.0 )
-     etabin = (int) ( (eta-1.0)*5 + 12 );
+     etabin = floor( (eta+1.0)*2.5 + 7 );
+   if ( eta >= 1.0 && eta < 2.4)
+     etabin = floor( (eta-1.0)*5 + 12 );
 
    int cbin = 0;
    if ( centbin < 4)
@@ -177,12 +177,12 @@ float MergedTrackCorrector::effic( float pt, float eta, int centbin )
 {
 
    int etabin = 0;
-   if ( eta < -1.0 ) 
-     etabin = (int) (eta+2.4)*5;
+   if (  eta >= -2.4 && eta < -1.0 ) 
+     etabin = floor((eta+2.4)*5);
    if ( eta >= -1.0 && eta < 1.0 ) 
-     etabin = (int) ( (eta+1.0)*2.5 + 7 );
-   if ( eta >= 1.0 )
-     etabin = (int) ( (eta-1.0)*5 + 12 );
+     etabin = floor( (eta+1.0)*2.5 + 7 );
+   if ( eta >= 1.0 && eta < 2.4)
+     etabin = floor( (eta-1.0)*5 + 12 );
 
    int cbin = 0;
    if ( centbin < 4)
