@@ -77,6 +77,8 @@ class HiPixelTrkEffHistograms
    bool fillNtuples;
    bool constPtBins;
    bool lowPtMode;
+   bool flow2010Mode;
+   bool jet2010Mode;
    edm::Service<TFileService> f;
 
    std::vector<double> etaBins, ptBins, jetBins;

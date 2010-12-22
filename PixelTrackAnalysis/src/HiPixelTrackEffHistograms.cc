@@ -12,10 +12,12 @@ using namespace std;
 
 HiPixelTrkEffHistograms::HiPixelTrkEffHistograms(const edm::ParameterSet& pset)
 {
-  fillHistograms         = pset.getParameter<bool>("fillHistograms");
-  fillNtuples            = pset.getParameter<bool>("fillNtuples");
-  constPtBins            = pset.getParameter<bool>("constPtBins");
-  lowPtMode              = pset.getParameter<bool>("lowPtMode");
+  fillHistograms  = pset.getParameter<bool>("fillHistograms");
+  fillNtuples     = pset.getParameter<bool>("fillNtuples");
+  constPtBins     = pset.getParameter<bool>("constPtBins");
+  lowPtMode       = pset.getParameter<bool>("lowPtMode");
+  flow2010Mode    = pset.exists("flow2010Mode") ? pset.getParameter<bool>("flow2010Mode") : false;
+  jet2010Mode    = pset.exists("jet2010Mode") ? pset.getParameter<bool>("jet2010Mode") : false;
 }
 
 
@@ -40,6 +42,7 @@ HiPixelTrkEffHistograms::declareHistograms()
     
   }
   
+
   if(fillHistograms) {
 
     // pt bins
@@ -76,6 +79,7 @@ HiPixelTrkEffHistograms::declareHistograms()
 	  ptBins.push_back(pt);
 
     }
+
     
     // eta bins
     static float etaMin   = -3.0;
@@ -84,6 +88,86 @@ HiPixelTrkEffHistograms::declareHistograms()
 
     for(double eta = etaMin; eta < etaMax + etaWidth/2; eta += etaWidth)
       etaBins.push_back(eta);
+
+    if (flow2010Mode)
+    {
+
+       ptBins.clear();
+       etaBins.clear();
+
+      ptBins.push_back(0.3);
+      ptBins.push_back(0.4);
+      ptBins.push_back(0.5);
+      ptBins.push_back(0.6);
+      ptBins.push_back(0.8);
+      ptBins.push_back(1.0);
+      ptBins.push_back(1.2);
+      ptBins.push_back(1.6);
+      ptBins.push_back(2.0);
+      ptBins.push_back(2.5);
+      ptBins.push_back(3.0);
+      ptBins.push_back(4.0);
+      ptBins.push_back(6.0);
+      ptBins.push_back(8.0);
+      ptBins.push_back(12.0);
+      etaBins.push_back(-2.4);
+      etaBins.push_back(-2.0);
+      etaBins.push_back(-1.6);
+      etaBins.push_back(-0.8);
+      etaBins.push_back(0.0);
+      etaBins.push_back(0.8);
+      etaBins.push_back(1.6);
+      etaBins.push_back(2.0);
+      etaBins.push_back(2.4);
+    }
+
+if (jet2010Mode)
+{
+
+   ptBins.clear();
+   etaBins.clear();
+
+  ptBins.push_back(0.2);
+  ptBins.push_back(0.3);
+  ptBins.push_back(0.4);
+  ptBins.push_back(0.5);
+  ptBins.push_back(0.6);
+  ptBins.push_back(0.7);
+  ptBins.push_back(0.8);
+  ptBins.push_back(0.9);
+  ptBins.push_back(1.0);
+  ptBins.push_back(1.1);
+  ptBins.push_back(1.2);
+  ptBins.push_back(1.3);
+  ptBins.push_back(1.4);
+  ptBins.push_back(1.5);
+  ptBins.push_back(1.6);
+  ptBins.push_back(1.7);
+  ptBins.push_back(1.8);
+  ptBins.push_back(1.9);
+  ptBins.push_back(2.0);
+  ptBins.push_back(2.5);
+  ptBins.push_back(3.0);
+  ptBins.push_back(4.0);
+  ptBins.push_back(5.0);
+  ptBins.push_back(6.0);
+  ptBins.push_back(8.0);
+  ptBins.push_back(12.0);
+  ptBins.push_back(16.0);
+  ptBins.push_back(20.0);
+  ptBins.push_back(30.0);
+  ptBins.push_back(50.0);
+  ptBins.push_back(80.0);
+  ptBins.push_back(120.0);
+  etaBins.push_back(0.0);
+  etaBins.push_back(0.4);
+  etaBins.push_back(0.8);
+  etaBins.push_back(1.2);
+  etaBins.push_back(1.6);
+  etaBins.push_back(2.0);
+  etaBins.push_back(2.4);
+}
+
 
 
     // jet et (centrality) bins
@@ -206,18 +290,21 @@ HiPixelTrkEffHistograms::fillSimHistograms(const SimTrack_t & s)
     trackTrees[0]->Fill();
   }
 
+  float eta = jet2010Mode ? fabs(s.etas) : s.etas ; 
+
   if(fillHistograms && s.status>0) {
-    hsim->Fill(s.etas, s.pts);
-    hsim3D->Fill(s.etas, s.pts, s.jetr);
-    if(s.acc)    hacc->Fill(s.etas, s.pts);
+    hsim->Fill(eta, s.pts);
+    hsim3D->Fill(eta, s.pts, s.jetr);
+    if(s.acc)    hacc->Fill(eta, s.pts);
     if(s.nrec==1) {
-       hresStoR3D->Fill(s.etas, s.pts, s.ptr);
+       hresStoR3D->Fill(eta, s.pts, s.ptr);
        //if(fabs(s.etas)<1.0) hresStoR3D_etaS->Fill(s.jetr, s.pts, s.ptr);
        //if(fabs(s.etas)<2.4) hresStoR3D_etaL->Fill(s.jetr, s.pts, s.ptr);
     }
-    if(s.nrec>0) heff->Fill(s.etas, s.pts), heff3D->Fill(s.etas, s.pts, s.jetr);
-    if(s.nrec>1) hmul->Fill(s.etas, s.pts), hmul3D->Fill(s.etas, s.pts, s.jetr);
+    if(s.nrec>0) heff->Fill(eta, s.pts), heff3D->Fill(eta, s.pts, s.jetr);
+    if(s.nrec>1) hmul->Fill(eta, s.pts), hmul3D->Fill(eta, s.pts, s.jetr);
   }
+
 
 }
 
@@ -230,11 +317,13 @@ HiPixelTrkEffHistograms::fillRecHistograms(const RecTrack_t & r)
     trackTrees[1]->Fill();
   }
 
+  float eta = jet2010Mode ? fabs(r.etar) : r.etar ; 
+
   if(fillHistograms) {
-    hrec->Fill(r.etar, r.ptr);
-    hrec3D->Fill(r.etar, r.ptr, r.jetr);
-    if(!r.nsim) hfak->Fill(r.etar, r.ptr), hfak3D->Fill(r.etar, r.ptr, r.jetr);
-    if(r.nsim>0 && r.status<0) hsec->Fill(r.etar, r.ptr), hsec3D->Fill(r.etar, r.ptr, r.jetr); // nsim>0 redudant?
+    hrec->Fill(eta, r.ptr);
+    hrec3D->Fill(eta, r.ptr, r.jetr);
+    if(!r.nsim) hfak->Fill(eta, r.ptr), hfak3D->Fill(eta, r.ptr, r.jetr);
+    if(r.nsim>0 && r.status<0) hsec->Fill(eta, r.ptr), hsec3D->Fill(eta, r.ptr, r.jetr); // nsim>0 redudant?
   }
 
 }
