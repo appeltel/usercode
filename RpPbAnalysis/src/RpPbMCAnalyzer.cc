@@ -42,16 +42,7 @@ class RpPbMCAnalyzer : public edm::EDAnalyzer {
 
       // ----------member data ---------------------------
 
-      TH1F* chargedHadrons_;
-      TH1F* pions_;
-      TH1F* kaons_;
-      TH1F* protons_;
-      TH1F* antiprotons_;
-      TH1F* chargedHadrons_finer_;
-      TH1F* pions_finer_;
-      TH1F* kaons_finer_;
-      TH1F* protons_finer_;
-      TH1F* antiprotons_finer_;
+      std::map<std::string,TH1F*> spectra_;
 
       TH1F* events_;
 
@@ -106,28 +97,29 @@ rapidityShift_(iConfig.getParameter<double>("rapidityShift"))
     vtxN_ = fs->make<TH1F>("vtxN","Vertices per event",20,0,20);
 
     distPV_ = fs->make<TH1F>("distPV_","3d distance from best primary vertex",100,0,20);
-
-    chargedHadrons_ = fs->make<TH1F>(Form("chargedHadrons"),
-      Form("Charged Hadron Spectrum, |#eta| < %f ",etaMax_),ptBins.size()-1, &ptBins[0]); 
-    pions_ = fs->make<TH1F>(Form("pions"),
-      Form("Charged Pion Spectrum, |#eta| < %f ",etaMax_),ptBins.size()-1, &ptBins[0]); 
-    kaons_ = fs->make<TH1F>(Form("kaons"),
-      Form("Charged Kaon Spectrum, |#eta| < %f ",etaMax_),ptBins.size()-1, &ptBins[0]); 
-    protons_ = fs->make<TH1F>(Form("protons"),
-      Form("Proton Spectrum, |#eta| < %f ",etaMax_),ptBins.size()-1, &ptBins[0]); 
-    antiprotons_ = fs->make<TH1F>(Form("antiprotons"),
-      Form("Antiproton Spectrum, |#eta| < %f ",etaMax_),ptBins.size()-1, &ptBins[0]); 
-
-    chargedHadrons_finer_ = fs->make<TH1F>(Form("chargedHadrons_finer"),
-      Form("Charged Hadron Spectrum, |#eta| < %f ",etaMax_),ptBins_finer.size()-1, &ptBins_finer[0]); 
-    pions_finer_ = fs->make<TH1F>(Form("pions_finer"),
-      Form("Charged Pion Spectrum, |#eta| < %f ",etaMax_),ptBins_finer.size()-1, &ptBins_finer[0]); 
-    kaons_finer_ = fs->make<TH1F>(Form("kaons_finer"),
-      Form("Charged Kaon Spectrum, |#eta| < %f ",etaMax_),ptBins_finer.size()-1, &ptBins_finer[0]); 
-    protons_finer_ = fs->make<TH1F>(Form("protons_finer"),
-      Form("Proton Spectrum, |#eta| < %f ",etaMax_),ptBins_finer.size()-1, &ptBins_finer[0]); 
-    antiprotons_finer_ = fs->make<TH1F>(Form("antiprotons_finer"),
-      Form("Antiproton Spectrum, |#eta| < %f ",etaMax_),ptBins_finer.size()-1, &ptBins_finer[0]); 
+ 
+    {    
+      std::vector<std::string> vlabel{"chargedHadrons","chargedHadrons+","chargedHadrons-",
+                                      "pions","pions+","pions-",
+                                      "kaons","kaons+","kaons-",
+                                      "protons","protons+","protons-"};
+      for( auto label : vlabel )
+        spectra_[label] = fs->make<TH1F>(label.c_str(),
+            Form("%s, %4.2f < #eta < %4.2f;p_{T} [GeV/c];(1/N_{evt})d^{2}N/dp_{T}d#eta",
+                 label.c_str(), -etaMax_+rapidityShift_, etaMax_+rapidityShift_),
+            ptBins.size()-1, &ptBins[0]);
+    }
+    {
+      std::vector<std::string> vlabel{"chargedHadrons_finer","chargedHadrons_finer+","chargedHadrons_finer-",
+                                      "pions_finer","pions_finer+","pions_finer-",
+                                      "kaons_finer","kaons_finer+","kaons_finer-",
+                                      "protons_finer","protons_finer+","protons_finer-"};
+      for( auto label : vlabel )
+        spectra_[label] = fs->make<TH1F>(label.c_str(),
+            Form("%s, %4.2f < #eta < %4.2f;p_{T} [GeV/c];(1/N_{evt})d^{2}N/dp_{T}d#eta", 
+                 label.c_str(), -etaMax_+rapidityShift_, etaMax_+rapidityShift_),
+            ptBins_finer.size()-1, &ptBins_finer[0]);
+    }
 
     nevt_ = 0;
 }
@@ -207,9 +199,16 @@ RpPbMCAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
           particle.charge() != 0 &&
           fabs(particle.eta() - rapidityShift_ ) <= etaMax_ )
      {
-       chargedHadrons_->Fill( particle.pt() );
-       chargedHadrons_finer_->Fill( particle.pt() );
 
+       bool isPos = (particle.charge())==1 ? true : false;
+
+       spectra_["chargedHadrons"]->Fill( particle.pt() );
+       spectra_["chargedHadrons_finer"]->Fill( particle.pt() );
+       if(isPos) spectra_["chargedHadrons+"]->Fill( particle.pt() );
+       if(isPos) spectra_["chargedHadrons_finer+"]->Fill( particle.pt() );
+       if(!isPos) spectra_["chargedHadrons-"]->Fill( particle.pt() );
+       if(!isPos) spectra_["chargedHadrons_finer-"]->Fill( particle.pt() );
+ 
        double vdist = sqrt( (particle.vx() - vx)* (particle.vx() - vx)
                            + (particle.vy() - vy)* (particle.vy() - vy)
                            + (particle.vz() - vz)* (particle.vz() - vz) );
@@ -218,20 +217,33 @@ RpPbMCAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
  
        if ( abs(particle.pdgId()) == 211 )
        {
-         pions_->Fill( particle.pt() );
-         pions_finer_->Fill( particle.pt() );
+         spectra_["pions"]->Fill( particle.pt() );
+         spectra_["pions_finer"]->Fill( particle.pt() );
+         if(isPos) spectra_["pions+"]->Fill( particle.pt() );
+         if(isPos) spectra_["pions_finer+"]->Fill( particle.pt() );
+         if(!isPos) spectra_["pions-"]->Fill( particle.pt() );
+         if(!isPos) spectra_["pions_finer-"]->Fill( particle.pt() );
          // find rogue pions
          if ( vdist > 1. && printDebug_) printRoguePion(particle,vdist);
        } 
        if ( abs(particle.pdgId()) == 321 )
-         kaons_->Fill( particle.pt() );
-         kaons_finer_->Fill( particle.pt() );
+       {
+         spectra_["kaons"]->Fill( particle.pt() );
+         spectra_["kaons_finer"]->Fill( particle.pt() );
+         if(isPos) spectra_["kaons+"]->Fill( particle.pt() );
+         if(isPos) spectra_["kaons_finer+"]->Fill( particle.pt() );
+         if(!isPos) spectra_["kaons-"]->Fill( particle.pt() );
+         if(!isPos) spectra_["kaons_finer-"]->Fill( particle.pt() );
+       }
        if ( particle.pdgId() == 2212 )
-         protons_->Fill( particle.pt() );
-         protons_finer_->Fill( particle.pt() );
-       if ( particle.pdgId() == -2212 )
-         antiprotons_->Fill( particle.pt() );
-         antiprotons_finer_->Fill( particle.pt() );
+       {
+         spectra_["protons"]->Fill( particle.pt() );
+         spectra_["protons_finer"]->Fill( particle.pt() );
+         if(isPos) spectra_["protons+"]->Fill( particle.pt() );
+         if(isPos) spectra_["protons_finer+"]->Fill( particle.pt() );
+         if(!isPos) spectra_["protons-"]->Fill( particle.pt() );
+         if(!isPos) spectra_["protons_finer-"]->Fill( particle.pt() );
+       }
      }
    }
 }
@@ -279,6 +291,17 @@ RpPbMCAnalyzer::beginJob()
 void
 RpPbMCAnalyzer::endJob()
 {
+  // properly scale spectra histograms
+  for( auto elem : spectra_ )
+  {
+    auto & histo = elem.second;
+    for(int i = 1; i <= histo->GetNbinsX(); i++) {
+      float content = histo->GetBinContent(i);
+      float error = histo->GetBinError(i);
+      histo->SetBinContent(i,content/histo->GetBinWidth(i)/(float)nevt_/2./etaMax_);
+      histo->SetBinError(i,error/histo->GetBinWidth(i)/(float)nevt_/2./etaMax_);
+    }
+  }  
 }
 
 DEFINE_FWK_MODULE(RpPbMCAnalyzer);
