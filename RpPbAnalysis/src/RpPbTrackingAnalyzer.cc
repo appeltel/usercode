@@ -154,6 +154,8 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
        trkPerf_["phi"]->Fill(track.phi()); 
        trkPerf_["dxyErr"]->Fill(dxy/dxysigma); 
        trkPerf_["dzErr"]->Fill(dz/dzsigma); 
+       trkPerf_["chi2"]->Fill(track.normalizedChi2());
+       trkPerf_["pterr"]->Fill(track.ptError() / track.pt() );
        ntrack_++;
      }
 
@@ -185,6 +187,8 @@ RpPbTrackingAnalyzer::initHistos(const edm::Service<TFileService> & fs)
   trkPerf_["pt"] = fs->make<TH1F>("trkPt", "Track p_{T} Distribution;p_{T} [GeV/c]",100,0,10);
   trkPerf_["eta"] = fs->make<TH1F>("trkEta", "Track Pseudorapidity Distribution;#eta",50,-2.5,2.5);
   trkPerf_["phi"] = fs->make<TH1F>("trkPhi", "Track Azimuthal Distribution;#phi",100,-3.15,3.15);
+  trkPerf_["chi2"] = fs->make<TH1F>("trkChi2", "Track Normalized #chi^{2};#chi^{2}/n.d.o.f",60,0,20);
+  trkPerf_["pterr"] = fs->make<TH1F>("trkPterr", "Track p_{T} error;#delta p_{T} / p_{T}",50,0,0.5);
   trkPerf_["dxyErr"] = fs->make<TH1F>("trkDxyErr", "Transverse DCA Significance;dxy / #sigma_{dxy}",100,-20,20);
   trkPerf_["dzErr"] = fs->make<TH1F>("trkDzErr", "Longitudinal DCA Significance;dz / #sigma_{dz}",100,-20,20);
 
