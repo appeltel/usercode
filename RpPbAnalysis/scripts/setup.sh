@@ -2,8 +2,9 @@
 
 cd $CMSSW_BASE/src
 
-# event selection (replace with tag once available)
-cvs co HeavyIonsAnalysis/Configuration
-
+# event selection and centrality 
+cvs co -r pPbProd_v1 DataFormats/HeavyIonEvent
+cvs co -r pPbProd_v1 RecoHI/HiCentralityAlgos
+cvs co -r pPbProd_v1 HeavyIonsAnalysis/Configuration
 
 scram b
