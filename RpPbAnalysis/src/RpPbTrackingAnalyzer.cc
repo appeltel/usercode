@@ -176,21 +176,21 @@ RpPbTrackingAnalyzer::initHistos(const edm::Service<TFileService> & fs)
   evtPerf_["Nvtx"] = fs->make<TH1F>("evtNvtx","Primary Vertices per event",10,0,10);
 
   vtxPerf_["Ntrk"] = fs->make<TH1F>("vtxNtrk","Tracks per vertex",50,0,200);
-  vtxPerf_["x"] = fs->make<TH1F>("vtxX","Vertex x position",100,-1,1);
-  vtxPerf_["y"] = fs->make<TH1F>("vtxY","Vertex y position",100,-1,1);
+  vtxPerf_["x"] = fs->make<TH1F>("vtxX","Vertex x position",1000,-1,1);
+  vtxPerf_["y"] = fs->make<TH1F>("vtxY","Vertex y position",1000,-1,1);
   vtxPerf_["z"] = fs->make<TH1F>("vtxZ","Vertex z position",100,-30,30);
 
   vtxPerf2D_["Ntrk2D"] = fs->make<TH2F>("vtxNtrk2D","Tracks per vertex;vertex (sorted by Ntrk);Ntrk"
                                 ,10,0,10,200,0,200);
   
-  trkPerf_["Nhit"] = fs->make<TH1F>("trkNhit", "Tracks by Number of Valid Hits;N hits",    30,  0,30);
-  trkPerf_["pt"] = fs->make<TH1F>("trkPt", "Track p_{T} Distribution;p_{T} [GeV/c]",100,0,10);
+  trkPerf_["Nhit"] = fs->make<TH1F>("trkNhit", "Tracks by Number of Valid Hits;N hits",    35,  0,35);
+  trkPerf_["pt"] = fs->make<TH1F>("trkPt", "Track p_{T} Distribution;p_{T} [GeV/c]",100,0,6);
   trkPerf_["eta"] = fs->make<TH1F>("trkEta", "Track Pseudorapidity Distribution;#eta",50,-2.5,2.5);
   trkPerf_["phi"] = fs->make<TH1F>("trkPhi", "Track Azimuthal Distribution;#phi",100,-3.15,3.15);
-  trkPerf_["chi2"] = fs->make<TH1F>("trkChi2", "Track Normalized #chi^{2};#chi^{2}/n.d.o.f",60,0,20);
-  trkPerf_["pterr"] = fs->make<TH1F>("trkPterr", "Track p_{T} error;#delta p_{T} / p_{T}",50,0,0.5);
-  trkPerf_["dxyErr"] = fs->make<TH1F>("trkDxyErr", "Transverse DCA Significance;dxy / #sigma_{dxy}",100,-20,20);
-  trkPerf_["dzErr"] = fs->make<TH1F>("trkDzErr", "Longitudinal DCA Significance;dz / #sigma_{dz}",100,-20,20);
+  trkPerf_["chi2"] = fs->make<TH1F>("trkChi2", "Track Normalized #chi^{2};#chi^{2}/n.d.o.f",60,0,6);
+  trkPerf_["pterr"] = fs->make<TH1F>("trkPterr", "Track p_{T} error;#delta p_{T} / p_{T}",50,0,0.2);
+  trkPerf_["dxyErr"] = fs->make<TH1F>("trkDxyErr", "Transverse DCA Significance;dxy / #sigma_{dxy}",100,-8,8);
+  trkPerf_["dzErr"] = fs->make<TH1F>("trkDzErr", "Longitudinal DCA Significance;dz / #sigma_{dz}",100,-8,8);
 
   trkPerf2D_["etaphi"] = fs->make<TH2F>("trkEtaPhi","Track Eta-Phi Map;#eta;#phi",50,-2.5,2.5,100,-3.15,3.15);
 
@@ -207,35 +207,6 @@ RpPbTrackingAnalyzer::beginJob()
 void
 RpPbTrackingAnalyzer::endJob()
 {
-  // normalize histograms
-  for( auto elem : trkPerf_ )
-  {
-    auto & histo = elem.second;
-    histo->Scale(1./(double)histo->Integral());
-  }  
-  for( auto elem : trkPerf2D_ )
-  {
-    auto & histo = elem.second;
-    histo->Scale(1./(double)histo->Integral());
-  }  
-  for( auto elem : vtxPerf_ )
-  {
-    auto & histo = elem.second;
-    histo->Scale(1./(double)histo->Integral());
-  }  
-  for( auto elem : vtxPerf2D_ )
-  {
-    auto & histo = elem.second;
-    histo->Scale(1./(double)histo->Integral());
-  }  
-  for( auto elem : evtPerf_ )
-  {
-    auto & histo = elem.second;
-    histo->Scale(1./(double)histo->Integral());
-  }  
-
-
-
 }
 
 DEFINE_FWK_MODULE(RpPbTrackingAnalyzer);
