@@ -23,6 +23,7 @@ process.source = cms.Source("PoolSource",
     fileNames =  cms.untracked.vstring(
 # private reco at MIT
 '/store/user/kjung/VZhukova/EposBatch13/pPbRecoShift_f1521_e.root'
+    )
 )
 
 #process.load("HLTrigger.HLTfilters.hltHighLevel_cfi")
