@@ -62,6 +62,7 @@ class RpPbTrackingAnalyzer : public edm::EDAnalyzer {
       edm::InputTag trackSrc_;
       double etaMin_;
       double etaMax_;
+      double ptMin_;
 
 };
 
@@ -76,6 +77,7 @@ etaMax_(iConfig.getParameter<double>("etaMax"))
 {
    edm::Service<TFileService> fs;
    initHistos(fs);
+   ptMin_ = iConfig.exists("ptMin") ? iConfig.getParameter<double>("ptMin") : 0.0;
 }
 
 RpPbTrackingAnalyzer::~RpPbTrackingAnalyzer()
@@ -139,7 +141,7 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
      trkPerf2D_["etaphi"]->Fill( track.eta(), track.phi() );
      tracks_->Fill(0.5);
 
-     if( track.eta() <= etaMax_ && track.eta() >= etaMin_ )
+     if( track.eta() <= etaMax_ && track.eta() >= etaMin_ && track.pt() > ptMin_)
      {
 
        double dxy=0.0, dz=0.0, dxysigma=0.0, dzsigma=0.0;
@@ -151,6 +153,7 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
        trackseta_->Fill(0.5);
        trkPerf_["Nhit"]->Fill(track.numberOfValidHits()); 
        trkPerf_["pt"]->Fill(track.pt()); 
+       trkPerf_["ptHigh"]->Fill(track.pt()); 
        trkPerf_["phi"]->Fill(track.phi()); 
        trkPerf_["dxyErr"]->Fill(dxy/dxysigma); 
        trkPerf_["dzErr"]->Fill(dz/dzsigma); 
@@ -185,6 +188,7 @@ RpPbTrackingAnalyzer::initHistos(const edm::Service<TFileService> & fs)
   
   trkPerf_["Nhit"] = fs->make<TH1F>("trkNhit", "Tracks by Number of Valid Hits;N hits",    35,  0,35);
   trkPerf_["pt"] = fs->make<TH1F>("trkPt", "Track p_{T} Distribution;p_{T} [GeV/c]",100,0,6);
+  trkPerf_["ptHigh"] = fs->make<TH1F>("trkPtHigh", "Track p_{T} Distribution;p_{T} [GeV/c]",100,0,200);
   trkPerf_["eta"] = fs->make<TH1F>("trkEta", "Track Pseudorapidity Distribution;#eta",50,-2.5,2.5);
   trkPerf_["phi"] = fs->make<TH1F>("trkPhi", "Track Azimuthal Distribution;#phi",100,-3.15,3.15);
   trkPerf_["chi2"] = fs->make<TH1F>("trkChi2", "Track Normalized #chi^{2};#chi^{2}/n.d.o.f",60,0,6);
