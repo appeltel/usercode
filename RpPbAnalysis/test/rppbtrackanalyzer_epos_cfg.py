@@ -8,6 +8,7 @@ process.load('HeavyIonsAnalysis.Configuration.collisionEventSelection_cff')
 process.load('Configuration.StandardSequences.GeometryDB_cff')
 process.load('Configuration.StandardSequences.MagneticField_38T_cff')
 process.load('Configuration.StandardSequences.ReconstructionHeavyIons_cff')
+process.load('Appeltel.RpPbAnalysis.RpPbTrackingAnalyzer_cff')
 
 process.maxEvents = cms.untracked.PSet(
     input = cms.untracked.int32(-1)
@@ -32,46 +33,7 @@ process.source = cms.Source("PoolSource",
 
 process.GlobalTag.globaltag = 'STARTHI53_V17::All'
 
-process.trkAna_etaFull = cms.EDAnalyzer('RpPbTrackingAnalyzer',
-   trackSrc = cms.InputTag("generalTracks"),
-   vertexSrc = cms.InputTag("offlinePrimaryVerticesWithBS"),
-   etaMin = cms.double(-2.5),
-   etaMax = cms.double(2.5)
-)
-
-process.trkAna_etaN2 = process.trkAna_etaFull.clone(
-   etaMin = cms.double(-2.5),
-   etaMax = cms.double(-1.5)
-)
-
-process.trkAna_etaN1 = process.trkAna_etaFull.clone(
-   etaMin = cms.double(-1.5),
-   etaMax = cms.double(-0.5)
-)
-
-process.trkAna_eta0 = process.trkAna_etaFull.clone(
-   etaMin = cms.double(-0.5),
-   etaMax = cms.double(0.5)
-)
-
-process.trkAna_etaP1 = process.trkAna_etaFull.clone(
-   etaMin = cms.double(0.5),
-   etaMax = cms.double(1.5)
-)
-
-process.trkAna_etaP2 = process.trkAna_etaFull.clone(
-   etaMin = cms.double(1.5),
-   etaMax = cms.double(2.5)
-)
-
-
-
 process.p = cms.Path( process.PAcollisionEventSelection * 
-                      process.trkAna_etaFull * 
-                      process.trkAna_etaN2 * 
-                      process.trkAna_etaN1 * 
-                      process.trkAna_eta0 * 
-                      process.trkAna_etaP1 * 
-                      process.trkAna_etaP2
+                      process.trkAnaMinBias 
 )
 
