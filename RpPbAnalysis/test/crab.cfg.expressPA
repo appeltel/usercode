@@ -6,7 +6,7 @@ use_server = 0
 
 [CMSSW]
 
-datasetpath=/ExpressPhysics/HIRun2013A-Express-v1/FEVT
+datasetpath=/ExpressPhysics/HIRun2013-Express-v1/FEVT
 pset=rppbtrackanalyzer_expressPA_cfg.py
 runselection= 209942
 lumis_per_job = 20
