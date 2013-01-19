@@ -29,7 +29,7 @@ process.load("HLTrigger.HLTfilters.hltHighLevel_cfi")
 process.hltSingleTrigger = process.hltHighLevel.clone()
 process.hltSingleTrigger.HLTPaths = ["HLT_PAZeroBiasPixel_SingleTrack_v1"]
 
-process.GlobalTag.globaltag = 'GR_E_V33A::All'
+process.GlobalTag.globaltag = 'GR_E_V33::All'
 
 process.p = cms.Path( process.hltSingleTrigger * 
                       process.PAcollisionEventSelection * 
