@@ -26,7 +26,7 @@
 #include <DataFormats/VertexReco/interface/VertexFwd.h>
 #include <DataFormats/TrackReco/interface/Track.h>
 #include <DataFormats/TrackReco/interface/TrackFwd.h>
-
+#include "DataFormats/HeavyIonEvent/interface/CentralityProvider.h"
 
 class RpPbTrackingAnalyzer : public edm::EDAnalyzer {
    public:
@@ -63,6 +63,8 @@ class RpPbTrackingAnalyzer : public edm::EDAnalyzer {
       double etaMin_;
       double etaMax_;
       double ptMin_;
+ 
+      CentralityProvider * centrality_;
 
 };
 
@@ -78,6 +80,8 @@ etaMax_(iConfig.getParameter<double>("etaMax"))
    edm::Service<TFileService> fs;
    initHistos(fs);
    ptMin_ = iConfig.exists("ptMin") ? iConfig.getParameter<double>("ptMin") : 0.0;
+
+   centrality_ = 0;
 }
 
 RpPbTrackingAnalyzer::~RpPbTrackingAnalyzer()
@@ -108,6 +112,10 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
    events_->Fill(0.5); 
    evtPerf_["Nvtx"]->Fill(vsorted.size());
    evtPerf_["Ntrk"]->Fill(tcol->size());
+
+   if (!centrality_) centrality_ = new CentralityProvider(iSetup);
+   centrality_->newEvent(iEvent,iSetup); 
+   evtPerf_["centrality"]->Fill(centrality_->getBin());
 
    int vcount = 0; 
    for( const auto & vi :  vsorted )
@@ -177,6 +185,7 @@ RpPbTrackingAnalyzer::initHistos(const edm::Service<TFileService> & fs)
 
   evtPerf_["Ntrk"] = fs->make<TH1F>("evtNtrk","Tracks per event",100,0,400);
   evtPerf_["Nvtx"] = fs->make<TH1F>("evtNvtx","Primary Vertices per event",10,0,10);
+  evtPerf_["centrality"] = fs->make<TH1F>("centrality","Event centrality bin",100,0,100);
 
   vtxPerf_["Ntrk"] = fs->make<TH1F>("vtxNtrk","Tracks per vertex",50,0,200);
   vtxPerf_["x"] = fs->make<TH1F>("vtxX","Vertex x position",1000,-1,1);

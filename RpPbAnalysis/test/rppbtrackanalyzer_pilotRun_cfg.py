@@ -18,6 +18,16 @@ process.TFileService = cms.Service("TFileService",
     fileName = cms.string('trackAnalysis.root')
 )
 
+from HeavyIonsAnalysis.Configuration.CommonFunctions_cff import *
+overrideCentrality(process)
+
+process.HeavyIonGlobalParameters = cms.PSet(
+  centralityVariable = cms.string("HFtowersPlusTrunc"),
+  nonDefaultGlauberModel = cms.string(""),
+  centralitySrc = cms.InputTag("pACentrality")
+#  pPbRunFlip = cms.uint32(99999999)
+  )
+
 # Input source
 process.source = cms.Source("PoolSource",
     fileNames = cms.untracked.vstring( 
@@ -34,5 +44,6 @@ process.GlobalTag.globaltag = 'GR_P_V41_AN2::All'
 
 process.p = cms.Path( process.hltSingleTrigger * 
                       process.PAcollisionEventSelection * 
+                      process.pACentrality *
                       process.trkAnaMinBias 
 )
