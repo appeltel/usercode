@@ -33,13 +33,24 @@ process.load('RecoHI.HiCentralityAlgos.HiCentrality_cfi')
 # Input source
 process.source = cms.Source("PoolSource",
     fileNames = cms.untracked.vstring( 
-'/store/express/HIRun2013/ExpressPhysics/FEVT/Express-v1/000/210/412/00000/3A1A368E-C461-E211-B719-001D09F2B2CF.root'
+'/store/express/HIRun2013/ExpressPhysics/FEVT/Express-v1/000/210/498/00000/D8C0777B-1863-E211-9265-BCAEC5329719.root'
   )
 )
 
 process.load("HLTrigger.HLTfilters.hltHighLevel_cfi")
-process.hltSingleTrigger = process.hltHighLevel.clone()
-process.hltSingleTrigger.HLTPaths = ["HLT_PAZeroBiasPixel_SingleTrack_v1"]
+process.hltSingleTrackTrigger = process.hltHighLevel.clone()
+process.hltSingleTrackTrigger.HLTPaths = ["HLT_PAZeroBiasPixel_SingleTrack_v1"]
+#process.hltSingleTrigger.HLTPaths = ["HLT_PAMinBiasHfOrBHC_v1"]
+
+process.load("HLTrigger.HLTfilters.hltHighLevel_cfi")
+process.hltScoutingTrigger = process.hltHighLevel.clone()
+process.hltScoutingTrigger.HLTPaths = ["HLT_PAPixelTrackMultiplicity100_L2DoubleMu3_v1",
+                                       "HLT_PAPixelTrackMultiplicity140_Jet80_NoJetID_v1"
+                                      ]
+process.hltScoutingTrigger.andOr = cms.bool(True)
+
+process.hltJet80Trigger = process.hltHighLevel.clone()
+process.hltJet80Trigger.HLTPaths = ["HLT_PAJet80_NoJetID_v1"]
 #process.hltSingleTrigger.HLTPaths = ["HLT_PAMinBiasHfOrBHC_v1"]
 
 process.options = cms.untracked.PSet(
@@ -49,9 +60,21 @@ process.options = cms.untracked.PSet(
 
 process.GlobalTag.globaltag = 'GR_E_V33::All'
 
-process.p = cms.Path( process.hltSingleTrigger * 
+process.minBias = cms.Path( process.hltSingleTrackTrigger * 
+#                    ~ process.hltScoutingTrigger *
                       process.PAcollisionEventSelection *
 #                      process.siPixelRecHits *
                       process.pACentrality * 
                       process.trkAnaMinBias
 )
+
+process.highPt = cms.Path( process.hltJet80Trigger *
+                           process.PAcollisionEventSelection *
+                           process.pACentrality *
+                           process.trkAna_etaFull_highPtQuality *
+                           process.trkAna_etaFull_highPt
+)
+
+process.schedule = cms.Schedule(
+    process.minBias, process.highPt
+) 
