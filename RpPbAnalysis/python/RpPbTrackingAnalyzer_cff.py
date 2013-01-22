@@ -41,3 +41,12 @@ trkAnaMinBias = cms.Sequence( trkAna_etaFull
 trkAna_etaFull_highPt = trkAna_etaFull.clone(
    ptMin = cms.double(6.0)
 )
+
+trkAna_etaFull_highPtQuality = trkAna_etaFull.clone(
+   ptMin = cms.double(6.0),
+   applyCuts = cms.bool(True),
+   qualityString = cms.string('highPurity'),
+   dxyErrMax = cms.double(3.0),
+   dzErrMax = cms.double(3.0),
+   ptErrMax = cms.double(0.1)
+)
