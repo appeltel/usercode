@@ -162,7 +162,6 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
    for( const auto & track : * tcol )
    {
 
-
      tracks_->Fill(0.5);
 
      if( track.eta() <= etaMax_ && track.eta() >= etaMin_ && track.pt() > ptMin_)
@@ -178,8 +177,8 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
        {
          if(track.quality(reco::TrackBase::qualityByName(qualityString_)) != 1) 
            continue;
-         if(dxy/dxysigma > dxyErrMax_) continue;
-         if(dz/dzsigma > dzErrMax_) continue;
+         if(fabs(dxy/dxysigma) > dxyErrMax_) continue;
+         if(fabs(dz/dzsigma) > dzErrMax_) continue;
          if(track.ptError() / track.pt() > ptErrMax_) continue;
        }
          
