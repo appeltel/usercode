@@ -66,6 +66,12 @@ class RpPbTrackingAnalyzer : public edm::EDAnalyzer {
  
       CentralityProvider * centrality_;
 
+      bool applyCuts_;
+      std::string qualityString_;
+      double dxyErrMax_;
+      double dzErrMax_;
+      double ptErrMax_;
+
 };
 
 RpPbTrackingAnalyzer::RpPbTrackingAnalyzer(const edm::ParameterSet& iConfig):
@@ -80,6 +86,17 @@ etaMax_(iConfig.getParameter<double>("etaMax"))
    edm::Service<TFileService> fs;
    initHistos(fs);
    ptMin_ = iConfig.exists("ptMin") ? iConfig.getParameter<double>("ptMin") : 0.0;
+
+   applyCuts_ = iConfig.exists("applyCuts") ? 
+                iConfig.getParameter<bool>("applyCuts") : false ;
+   qualityString_ = iConfig.exists("qualityString") ?
+                    iConfig.getParameter<std::string>("qualityString") : "highPurity" ;
+   dxyErrMax_ = iConfig.exists("dxyErrMax") ?
+                iConfig.getParameter<double>("dxyErrMax") : 3.0 ;
+   dzErrMax_ = iConfig.exists("dzErrMax") ?
+                iConfig.getParameter<double>("dzErrMax") : 3.0 ;
+   ptErrMax_ = iConfig.exists("ptErrMax") ?
+                iConfig.getParameter<double>("ptErrMax") : 0.1 ;
 
    centrality_ = 0;
 }
@@ -145,8 +162,7 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
    for( const auto & track : * tcol )
    {
 
-     trkPerf_["eta"]->Fill( track.eta() );
-     trkPerf2D_["etaphi"]->Fill( track.eta(), track.phi() );
+
      tracks_->Fill(0.5);
 
      if( track.eta() <= etaMax_ && track.eta() >= etaMin_ && track.pt() > ptMin_)
@@ -158,9 +174,20 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
        dxysigma = sqrt(track.d0Error()*track.d0Error()+vxErr*vyErr);
        dzsigma = sqrt(track.dzError()*track.dzError()+vzErr*vzErr);
        
+       if ( applyCuts_)
+       {
+         if(track.quality(reco::TrackBase::qualityByName(qualityString_)) != 1) 
+           continue;
+         if(dxy/dxysigma > dxyErrMax_) continue;
+         if(dz/dzsigma > dzErrMax_) continue;
+         if(track.ptError() / track.pt() > ptErrMax_) continue;
+       }
+         
        trackseta_->Fill(0.5);
        trkPerf_["Nhit"]->Fill(track.numberOfValidHits()); 
        trkPerf_["pt"]->Fill(track.pt()); 
+       trkPerf_["eta"]->Fill( track.eta() );
+       trkPerf2D_["etaphi"]->Fill( track.eta(), track.phi() );
        trkPerf_["ptHigh"]->Fill(track.pt()); 
        trkPerf_["phi"]->Fill(track.phi()); 
        trkPerf_["dxyErr"]->Fill(dxy/dxysigma); 
