@@ -158,8 +158,13 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
    for (unsigned int i =1; i<vsorted.size(); i++)
    {
      double dz = fabs( vsorted[i].z() - vsorted[0].z() );
+     double dx = fabs( vsorted[i].x() - vsorted[0].x() );
+     double dy = fabs( vsorted[i].y() - vsorted[0].y() );
+     double dxy  = sqrt ( dx*dx + dy*dy );
      vtxPerf_["assocVtxDz"]->Fill(dz);
      vtxPerf2D_["assocVtxDzNtrk"]->Fill(dz,vsorted[i].tracksSize() );
+     vtxPerf_["assocVtxDxy"]->Fill(dxy);
+     vtxPerf2D_["assocVtxDxyNtrk"]->Fill(dxy,vsorted[i].tracksSize() );
    }
 
    math::XYZPoint vtxPoint(0.0,0.0,0.0);
@@ -236,12 +241,16 @@ RpPbTrackingAnalyzer::initHistos(const edm::Service<TFileService> & fs)
   vtxPerf_["y"] = fs->make<TH1F>("vtxY","Vertex y position",1000,-1,1);
   vtxPerf_["z"] = fs->make<TH1F>("vtxZ","Vertex z position",100,-30,30);
   vtxPerf_["assocVtxDz"] = fs->make<TH1F>("assocVtxDz","Z Distance from first PV; dz (cm)",200,0,50);
+  vtxPerf_["assocVtxDxy"] = fs->make<TH1F>("assocVtxDxy","Rho Distance from first PV; dxy (cm)",200,0,4);
 
   vtxPerf2D_["Ntrk2D"] = fs->make<TH2F>("vtxNtrk2D","Tracks per vertex;vertex (sorted by Ntrk);Ntrk"
                                 ,10,0,10,200,0,200);
   vtxPerf2D_["assocVtxDzNtrk"] = fs->make<TH2F>("assocVtxDzNtrk",
                                  "Z Distance from first PV vs Ntrk of assoc; dz (cm); Ntrk",
                                  200,0,50,50,0,200);
+  vtxPerf2D_["assocVtxDxyNtrk"] = fs->make<TH2F>("assocVtxDxyNtrk",
+                                 "Rho Distance from first PV vs Ntrk of assoc; dxy (cm); Ntrk",
+                                 200,0,4,50,0,200);
   
   trkPerf_["Nhit"] = fs->make<TH1F>("trkNhit", "Tracks by Number of Valid Hits;N hits",    35,  0,35);
   trkPerf_["pt"] = fs->make<TH1F>("trkPt", "Track p_{T} Distribution;p_{T} [GeV/c]",100,0,6);
