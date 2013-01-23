@@ -11,12 +11,15 @@
 #include "FWCore/Framework/interface/EDAnalyzer.h"
 
 #include "FWCore/Framework/interface/Event.h"
+#include "FWCore/Framework/interface/LuminosityBlock.h"
+
 #include "FWCore/Framework/interface/MakerMacros.h"
 
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 
 #include <TH1.h>
 #include <TH2.h>
+#include <TGraph.h>
 
 #include "FWCore/Framework/interface/MakerMacros.h"
 #include "FWCore/ServiceRegistry/interface/Service.h"
@@ -53,6 +56,7 @@ class RpPbTrackingAnalyzer : public edm::EDAnalyzer {
       TH1F* vertices_;
       TH1F* tracks_;
       TH1F* trackseta_;
+
 
       int nevt_;
       int ntrack_;
@@ -130,6 +134,10 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
    evtPerf_["Nvtx"]->Fill(vsorted.size());
    evtPerf_["Ntrk"]->Fill(tcol->size());
 
+   int lumi = iEvent.getLuminosityBlock().luminosityBlock();
+   evtPerf_["Lumi"]->Fill(lumi);
+   evtPerf_["NvtxLumi"]->Fill(lumi,vsorted.size());
+
    if (!centrality_) centrality_ = new CentralityProvider(iSetup);
    centrality_->newEvent(iEvent,iSetup); 
    evtPerf_["centrality"]->Fill(centrality_->getBin());
@@ -145,6 +153,13 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
      vertices_->Fill(0.5);
      vcount++;
      nvertex_++;
+   }
+
+   for (unsigned int i =1; i<vsorted.size(); i++)
+   {
+     double dz = fabs( vsorted[i].z() - vsorted[0].z() );
+     vtxPerf_["assocVtxDz"]->Fill(dz);
+     vtxPerf2D_["assocVtxDzNtrk"]->Fill(dz,vsorted[i].tracksSize() );
    }
 
    math::XYZPoint vtxPoint(0.0,0.0,0.0);
@@ -213,13 +228,20 @@ RpPbTrackingAnalyzer::initHistos(const edm::Service<TFileService> & fs)
   evtPerf_["Nvtx"] = fs->make<TH1F>("evtNvtx","Primary Vertices per event",10,0,10);
   evtPerf_["centrality"] = fs->make<TH1F>("centrality","Event centrality bin",100,0,100);
 
+  evtPerf_["NvtxLumi"] = fs->make<TH1F>("evtNvtxLumi","Primary Vertices by Lumi",200,0,2000);
+  evtPerf_["Lumi"] = fs->make<TH1F>("evtLumi","Events by Lumi",200,0,2000);
+
   vtxPerf_["Ntrk"] = fs->make<TH1F>("vtxNtrk","Tracks per vertex",50,0,200);
   vtxPerf_["x"] = fs->make<TH1F>("vtxX","Vertex x position",1000,-1,1);
   vtxPerf_["y"] = fs->make<TH1F>("vtxY","Vertex y position",1000,-1,1);
   vtxPerf_["z"] = fs->make<TH1F>("vtxZ","Vertex z position",100,-30,30);
+  vtxPerf_["assocVtxDz"] = fs->make<TH1F>("assocVtxDz","Z Distance from first PV; dz (cm)",200,0,50);
 
   vtxPerf2D_["Ntrk2D"] = fs->make<TH2F>("vtxNtrk2D","Tracks per vertex;vertex (sorted by Ntrk);Ntrk"
                                 ,10,0,10,200,0,200);
+  vtxPerf2D_["assocVtxDzNtrk"] = fs->make<TH2F>("assocVtxDzNtrk",
+                                 "Z Distance from first PV vs Ntrk of assoc; dz (cm); Ntrk",
+                                 200,0,50,50,0,200);
   
   trkPerf_["Nhit"] = fs->make<TH1F>("trkNhit", "Tracks by Number of Valid Hits;N hits",    35,  0,35);
   trkPerf_["pt"] = fs->make<TH1F>("trkPt", "Track p_{T} Distribution;p_{T} [GeV/c]",100,0,6);
@@ -232,6 +254,7 @@ RpPbTrackingAnalyzer::initHistos(const edm::Service<TFileService> & fs)
   trkPerf_["dzErr"] = fs->make<TH1F>("trkDzErr", "Longitudinal DCA Significance;dz / #sigma_{dz}",100,-8,8);
 
   trkPerf2D_["etaphi"] = fs->make<TH2F>("trkEtaPhi","Track Eta-Phi Map;#eta;#phi",50,-2.5,2.5,100,-3.15,3.15);
+
 
 }
 
