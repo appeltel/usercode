@@ -29,6 +29,13 @@ trkAna_etaP2 = trkAna_etaFull.clone(
    etaMax = cms.double(2.5)
 )
 
+trkAna_etaFull_pixel = trkAna_etaFull.clone(
+   trackSrc = cms.InputTag("pixelTracks")
+)
+
+trkAna_etaFull_noBS = trkAna_etaFull.clone(
+   vertexSrc = cms.InputTag("offlinePrimaryVertices")
+)
 
 trkAnaMinBias = cms.Sequence( trkAna_etaFull 
                               * trkAna_etaN2
@@ -36,6 +43,8 @@ trkAnaMinBias = cms.Sequence( trkAna_etaFull
                               * trkAna_eta0
                               * trkAna_etaP1
                               * trkAna_etaP2
+                              * trkAna_etaFull_pixel
+                              * trkAna_etaFull_noBS
                             )
 
 trkAna_etaFull_highPt = trkAna_etaFull.clone(
