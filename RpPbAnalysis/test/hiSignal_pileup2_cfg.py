@@ -50,9 +50,9 @@ process.options = cms.untracked.PSet(
 
 # Production Info
 #process.configurationMetadata = cms.untracked.PSet(
-#    version = cms.untracked.string('$Revision: 1.5 $'),
+#    version = cms.untracked.string('$Revision: 1.1 $'),
 #    annotation = cms.untracked.string('PYQUEN UNquenched dijets (pt-hat > 120 GeV) at sqrt(s) = 5.02TeV'),
-#    name = cms.untracked.string('$Source: /cvs_server/repositories/CMSSW/CMSSW/Configuration/GenProduction/python/HI/Pyquen_Dijet120_pp_Unquenched_TuneZ2_5p02TeV_cff.py,v $')
+#    name = cms.untracked.string('$Source: /local/reps/CMSSW/UserCode/Appeltel/RpPbAnalysis/test/hiSignal_pileup2_cfg.py,v $')
 #)
 
 # Output definition
@@ -81,7 +81,7 @@ process = ProcessName(process)
 from Configuration.AlCa.GlobalTag import GlobalTag
 process.GlobalTag = GlobalTag(process.GlobalTag, 'STARTHI53_V17::All', '')
 
-process.generator = cms.EDFilter("HijingGeneratorFilter",
+process.hiSignal = cms.EDFilter("HijingGeneratorFilter",
     frame = cms.string('CMS     '),
     targ = cms.string('P       '),
     izp = cms.int32(82),
