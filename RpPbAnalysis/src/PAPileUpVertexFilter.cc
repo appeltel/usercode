@@ -5,7 +5,7 @@
  *  (pileup). This is performed by looking at the characteristics of the 
  *  reconstructed vertices.
  *
- *  $Date: 2013/1/27 13:53:03 $
+ *  $Date: 2013/01/27 16:34:50 $
  *  $Revision: 1.1 $
  *
  *  \author E. Appelt - Vanderbilt University
@@ -45,7 +45,7 @@ class PAPileUpVertexFilter : public edm::EDFilter {
 
        edm::InputTag vtxSrc_;
        double dxyCut_;
-       double trkCut_;
+       int trkCut_;
        std::vector<double> dzCutByNtrk_;
        
        
@@ -56,7 +56,7 @@ class PAPileUpVertexFilter : public edm::EDFilter {
 PAPileUpVertexFilter::PAPileUpVertexFilter(const edm::ParameterSet& iConfig) :
 vtxSrc_(iConfig.getParameter<edm::InputTag>("vtxSrc")),
 dxyCut_(iConfig.getParameter<double>("dxyCut")),
-trkCut_(iConfig.getParameter<double>("trkCut")),
+trkCut_(iConfig.getParameter<int>("trkCut")),
 dzCutByNtrk_(iConfig.getParameter<std::vector<double> >("dzCutByNtrk"))
 {
 }
