@@ -12,7 +12,7 @@ process.load('Configuration.Geometry.GeometryExtendedReco_cff')
 process.load('Configuration.Geometry.GeometryExtended_cff')
 process.load('Configuration.StandardSequences.MagneticField_38T_cff')
 process.load('Configuration.StandardSequences.Generator_cff')
-process.load('IOMC.EventVertexGenerators.VtxSmearedRealistic8TeVCollision_cfi')
+process.load('GeneratorInterface.HiGenCommon.VtxSmearedRealisticPPbBoost8TeVCollision_cff')
 process.load('SimGeneral.MixingModule.himixGEN_cff')
 process.load('GeneratorInterface.Core.genFilterSummary_cff')
 process.load('Configuration.StandardSequences.SimIdeal_cff')
@@ -50,19 +50,16 @@ process.options = cms.untracked.PSet(
 
 # Production Info
 process.configurationMetadata = cms.untracked.PSet(
-    version = cms.untracked.string('$Revision: 1.3 $'),
+    version = cms.untracked.string('$Revision: 1.4 $'),
     annotation = cms.untracked.string('HIJING Minimum-Bias p-Pb 2 event pileup'),
     name = cms.untracked.string('$Source: /local/reps/CMSSW/UserCode/Appeltel/RpPbAnalysis/test/hiSignal_pileup2_cfg.py,v $')
 )
 
 # Additional output definition
 import random
-RandomNumberGeneratorService = cms.Service("RandomNumberGeneratorService",
-    hiSignal = cms.PSet(
-        #initialSeed = cms.untracked.uint32(123456789),
+process.RandomNumberGeneratorService.hiSignal = cms.PSet(
         initialSeed = cms.untracked.uint32(random.randrange(1,123456789)),
         engineName = cms.untracked.string('HepJamesRandom')
-    )
 )
 
 #different seed
@@ -142,6 +139,9 @@ from HLTrigger.Configuration.customizeHLTforMC import customizeHLTforMC
 
 #call to customisation function customizeHLTforMC imported from HLTrigger.Configuration.customizeHLTforMC
 process = customizeHLTforMC(process)
+
+
+process.hiGenParticles.srcVector = ["hiSignal","generator"]
 
 # End of customisation functions
 
