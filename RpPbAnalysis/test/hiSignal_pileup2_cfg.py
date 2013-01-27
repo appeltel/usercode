@@ -49,11 +49,11 @@ process.options = cms.untracked.PSet(
 )
 
 # Production Info
-#process.configurationMetadata = cms.untracked.PSet(
-#    version = cms.untracked.string('$Revision: 1.1 $'),
-#    annotation = cms.untracked.string('PYQUEN UNquenched dijets (pt-hat > 120 GeV) at sqrt(s) = 5.02TeV'),
-#    name = cms.untracked.string('$Source: /local/reps/CMSSW/UserCode/Appeltel/RpPbAnalysis/test/hiSignal_pileup2_cfg.py,v $')
-#)
+process.configurationMetadata = cms.untracked.PSet(
+    version = cms.untracked.string('$Revision: 1.3 $'),
+    annotation = cms.untracked.string('HIJING Minimum-Bias p-Pb 2 event pileup'),
+    name = cms.untracked.string('$Source: /local/reps/CMSSW/UserCode/Appeltel/RpPbAnalysis/test/hiSignal_pileup2_cfg.py,v $')
+)
 
 # Additional output definition
 import random
