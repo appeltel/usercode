@@ -1,6 +1,6 @@
 import FWCore.ParameterSet.Config as cms
 
-pileupVertexFilter  = cms.EDFilter('PAPileUpVertexFiliter',
+pileupVertexFilter  = cms.EDFilter('PAPileUpVertexFilter',
     vtxSrc = cms.InputTag("offlinePrimaryVertices"),
     dxyCut = cms.double(0.02),
     trkCut = cms.int32(20),
