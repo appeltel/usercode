@@ -55,6 +55,23 @@ process.options = cms.untracked.PSet(
 #    name = cms.untracked.string('$Source: /local/reps/CMSSW/UserCode/Appeltel/RpPbAnalysis/test/hiSignal_pileup2_cfg.py,v $')
 #)
 
+# Additional output definition
+import random
+RandomNumberGeneratorService = cms.Service("RandomNumberGeneratorService",
+    hiSignal = cms.PSet(
+        #initialSeed = cms.untracked.uint32(123456789),
+        initialSeed = cms.untracked.uint32(random.randrange(1,123456789)),
+        engineName = cms.untracked.string('HepJamesRandom')
+    )
+)
+
+#different seed
+## ----- WARNING ----- Ensure your PYTHONPATH has the same information as sys.path! Else this will fail!
+# Without these three lines, the sim vertex will not be smeared correctly
+from IOMC.RandomEngine.RandomServiceHelper import RandomNumberServiceHelper
+randSvc = RandomNumberServiceHelper(process.RandomNumberGeneratorService)
+randSvc.populate()
+
 # Output definition
 
 process.RAWDEBUGoutput = cms.OutputModule("PoolOutputModule",
@@ -81,7 +98,7 @@ process = ProcessName(process)
 from Configuration.AlCa.GlobalTag import GlobalTag
 process.GlobalTag = GlobalTag(process.GlobalTag, 'STARTHI53_V17::All', '')
 
-process.hiSignal = cms.EDFilter("HijingGeneratorFilter",
+process. hiSignal= cms.EDFilter("HijingGeneratorFilter",
     frame = cms.string('CMS     '),
     targ = cms.string('P       '),
     izp = cms.int32(82),
@@ -96,6 +113,9 @@ process.hiSignal = cms.EDFilter("HijingGeneratorFilter",
 )
 
 process.ProductionFilterSequence = cms.Sequence(process.hiSignal)
+
+process.VtxSmearedCommon.src = cms.InputTag("hiSignal")
+process.VtxSmeared.src = cms.InputTag("hiSignal")
 
 # Path and EndPath definitions
 process.generation_step = cms.Path(process.pgen_hi)
