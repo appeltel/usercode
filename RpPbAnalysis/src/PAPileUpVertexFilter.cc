@@ -5,8 +5,8 @@
  *  (pileup). This is performed by looking at the characteristics of the 
  *  reconstructed vertices.
  *
- *  $Date: 2013/01/28 03:59:47 $
- *  $Revision: 1.3 $
+ *  $Date: 2013/01/28 21:18:38 $
+ *  $Revision: 1.4 $
  *
  *  \author E. Appelt - Vanderbilt University
  *
@@ -121,7 +121,7 @@ PAPileUpVertexFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
      }
 
      // DxyDzCut: filter on PVs above a diagonal line on the Dxy vs Dz plot
-     if ( doDzNtrkCut_ )
+     if ( doDxyDzCut_ )
      {
        if( dz > dxyDzCutPar0_ + dxyDzCutPar1_ * dxy )
          accepted = false; 
