@@ -5,8 +5,8 @@
  *  (pileup). This is performed by looking at the characteristics of the 
  *  reconstructed vertices.
  *
- *  $Date: 2013/01/27 16:34:50 $
- *  $Revision: 1.1 $
+ *  $Date: 2013/01/27 16:44:31 $
+ *  $Revision: 1.2 $
  *
  *  \author E. Appelt - Vanderbilt University
  *
@@ -98,7 +98,6 @@ PAPileUpVertexFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
      // filter if above absolute max number of tracks for 2nd PV
      if ( nTrk > trkCut_ )
        accepted = false;
-       break;
 
      // for smaller nTrk, filter on dz by number of tracks
      for( unsigned int j=0; j<dzCutByNtrk_.size() ; j++)
