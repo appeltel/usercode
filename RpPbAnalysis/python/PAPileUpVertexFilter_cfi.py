@@ -2,13 +2,13 @@ import FWCore.ParameterSet.Config as cms
 
 pileupVertexFilter  = cms.EDFilter('PAPileUpVertexFilter',
     vtxSrc = cms.InputTag("offlinePrimaryVertices"),
-    dxyCut = cms.double(0.02),
-    trkCut = cms.int32(20),
+    doDzNtrkCut = cms.bool(True),
+    doDxyDzCut = cms.bool(False),
+    dxyVeto = cms.double(999.),
+    dzVeto = cms.double(-999.),
+    dxyDzCutPar0 = cms.double(0.6),
+    dxyDzCutPar1 = cms.double(13.333),
     dzCutByNtrk = cms.vdouble(
-        999., 999., 2.5,  2.0,
-        1.5,  1.2,  1.0,  0.8,
-        0.5,  0.4,  0.35, 0.3,
-        0.25, 0.25, 0.2,  0.2,
-        0.2,  0.15, 0.15, 0.1
+        999., 3.0, 2.4, 2.0, 1.2, 1.2, 0.9, 0.6
     )
 )

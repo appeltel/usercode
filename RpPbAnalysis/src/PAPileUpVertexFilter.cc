@@ -5,8 +5,8 @@
  *  (pileup). This is performed by looking at the characteristics of the 
  *  reconstructed vertices.
  *
- *  $Date: 2013/01/27 16:44:31 $
- *  $Revision: 1.2 $
+ *  $Date: 2013/01/28 03:59:47 $
+ *  $Revision: 1.3 $
  *
  *  \author E. Appelt - Vanderbilt University
  *
@@ -44,8 +44,12 @@ class PAPileUpVertexFilter : public edm::EDFilter {
     private:
 
        edm::InputTag vtxSrc_;
-       double dxyCut_;
-       int trkCut_;
+       bool doDzNtrkCut_;
+       bool doDxyDzCut_;
+       double dxyVeto_;
+       double dzVeto_;
+       double dxyDzCutPar0_;
+       double dxyDzCutPar1_;
        std::vector<double> dzCutByNtrk_;
        
        
@@ -55,8 +59,12 @@ class PAPileUpVertexFilter : public edm::EDFilter {
 
 PAPileUpVertexFilter::PAPileUpVertexFilter(const edm::ParameterSet& iConfig) :
 vtxSrc_(iConfig.getParameter<edm::InputTag>("vtxSrc")),
-dxyCut_(iConfig.getParameter<double>("dxyCut")),
-trkCut_(iConfig.getParameter<int>("trkCut")),
+doDzNtrkCut_(iConfig.getParameter<bool>("doDzNtrkCut")),
+doDxyDzCut_(iConfig.getParameter<bool>("doDxyDzCut")),
+dxyVeto_(iConfig.getParameter<double>("dxyVeto")),
+dzVeto_(iConfig.getParameter<double>("dzVeto")),
+dxyDzCutPar0_(iConfig.getParameter<double>("dxyDzCutPar0")),
+dxyDzCutPar1_(iConfig.getParameter<double>("dxyDzCutPar1")),
 dzCutByNtrk_(iConfig.getParameter<std::vector<double> >("dzCutByNtrk"))
 {
 }
@@ -92,24 +100,36 @@ PAPileUpVertexFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
      double dxy  = sqrt ( dx*dx + dy*dy );
      double nTrk = vsorted[i].tracksSize();
 
-     // only filter for small dxy
-     if ( dxy > dxyCut_ ) continue;
+     // dxy Veto: only filter for small dxy
+     if ( dxy > dxyVeto_ ) continue;
 
-     // filter if above absolute max number of tracks for 2nd PV
-     if ( nTrk > trkCut_ )
-       accepted = false;
+     // dz Veto: only filter for large dz
+     if ( dz < dzVeto_ ) continue;
 
-     // for smaller nTrk, filter on dz by number of tracks
-     for( unsigned int j=0; j<dzCutByNtrk_.size() ; j++)
+     // DzNtrkCut:  filter on dz by number of tracks
+     if ( doDzNtrkCut_ )
      {
-       if ( nTrk == (int)j+1 && dz > dzCutByNtrk_[j] ) 
+       for( unsigned int j=0; j<dzCutByNtrk_.size() ; j++)
+       {
+         if ( nTrk == (int)j && dz > dzCutByNtrk_[j] ) 
+           accepted = false;
+       }     
+       // last dz value in vector is applied to all greater values of Ntrk
+       if ( nTrk >= (int)dzCutByNtrk_.size() 
+            && dz > dzCutByNtrk_[dzCutByNtrk_.size()-1] )
          accepted = false;
-     }   
+     }
+
+     // DxyDzCut: filter on PVs above a diagonal line on the Dxy vs Dz plot
+     if ( doDzNtrkCut_ )
+     {
+       if( dz > dxyDzCutPar0_ + dxyDzCutPar1_ * dxy )
+         accepted = false; 
+     }
 
    }
 
    return accepted;
-
 }
 
 void
