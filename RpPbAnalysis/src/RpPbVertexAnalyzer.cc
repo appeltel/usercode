@@ -134,6 +134,7 @@ RpPbVertexAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
      vtxPerf2D_["assocVtxDzNtrk"]->Fill(dz,vsorted[i].tracksSize() );
      vtxPerf_["assocVtxDxy"]->Fill(dxy);
      vtxPerf2D_["assocVtxDxyNtrk"]->Fill(dxy,vsorted[i].tracksSize() );
+     vtxPerf2D_["assocVtxDxyDz"]->Fill(dxy,dz);
      vtxPerf2D_["vtxCorrZ"]->Fill( vsorted[0].z(), vsorted[i].z() );
    }
 
@@ -172,6 +173,9 @@ RpPbVertexAnalyzer::initHistos(const edm::Service<TFileService> & fs)
   vtxPerf2D_["assocVtxDxyNtrk"] = fs->make<TH2F>("assocVtxDxyNtrk",
                                  "Rho Distance from first PV vs Ntrk of assoc; dxy (cm); Ntrk",
                                  800,0,4,200,0,200);
+  vtxPerf2D_["assocVtxDxyDz"] = fs->make<TH2F>("assocVtxDxyDz",
+                                 "Rho Distance from first PV vs Z distance; dxy (cm); dz (cm)",
+                                 800,0,4,500,0,50);
   vtxPerf2D_["vtxCorrZ"] = fs->make<TH2F>("vtzCorrZ",
                                  "z position of first PV vs additional PVs; z_{trig} (cm); z_{assoc} (cm)",
                                  300,-30,30,300,-30,30);
