@@ -114,6 +114,7 @@ RpPbVertexAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
      vtxPerf_["xerr"]->Fill(vi.xError());
      vtxPerf_["yerr"]->Fill(vi.yError());
      vtxPerf_["zerr"]->Fill(vi.zError());
+     vtxPerf_["chi2"]->Fill(vi.normalizedChi2());
      vtxPerf2D_["Ntrk2D"]->Fill(vcount,vi.tracksSize());
      vertices_->Fill(0.5);
      vcount++;
@@ -131,10 +132,13 @@ RpPbVertexAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
      double dxy  = sqrt ( dx*dx + dy*dy );
    //  double dxyErr = sqrt ( dxErr*dxErr + dyErr * dyErr );
      vtxPerf_["assocVtxDz"]->Fill(dz);
-     vtxPerf2D_["assocVtxDzNtrk"]->Fill(dz,vsorted[i].tracksSize() );
      vtxPerf_["assocVtxDxy"]->Fill(dxy);
+     vtxPerf2D_["assocVtxDzNtrk"]->Fill(dz,vsorted[i].tracksSize() );
      vtxPerf2D_["assocVtxDxyNtrk"]->Fill(dxy,vsorted[i].tracksSize() );
      vtxPerf2D_["assocVtxDxyDz"]->Fill(dxy,dz);
+     vtxPerf2D_["assocVtxChi2Ntrk"]->Fill(vsorted[i].normalizedChi2(),vsorted[i].tracksSize());
+     vtxPerf2D_["assocVtxChi2Dxy"]->Fill(vsorted[i].normalizedChi2(),dxy); 
+     vtxPerf2D_["assocVtxChi2Dz"]->Fill(vsorted[i].normalizedChi2(),dz); 
      vtxPerf2D_["vtxCorrZ"]->Fill( vsorted[0].z(), vsorted[i].z() );
    }
 
@@ -162,6 +166,7 @@ RpPbVertexAnalyzer::initHistos(const edm::Service<TFileService> & fs)
   vtxPerf_["xerr"] = fs->make<TH1F>("vtxXerr","Vertex x error",100,0.,0.05);
   vtxPerf_["yerr"] = fs->make<TH1F>("vtxYerr","Vertex y error",100,0.,0.05);
   vtxPerf_["zerr"] = fs->make<TH1F>("vtxZerr","Vertex z error",100,0.,0.05);
+  vtxPerf_["chi2"] = fs->make<TH1F>("chi2","Vertex Normalized Chi2",200,0.,50.);
   vtxPerf_["assocVtxDz"] = fs->make<TH1F>("assocVtxDz","Z Distance from first PV; dz (cm)",500,0,50);
   vtxPerf_["assocVtxDxy"] = fs->make<TH1F>("assocVtxDxy","Rho Distance from first PV; dxy (cm)",800,0,4);
 
@@ -173,9 +178,18 @@ RpPbVertexAnalyzer::initHistos(const edm::Service<TFileService> & fs)
   vtxPerf2D_["assocVtxDxyNtrk"] = fs->make<TH2F>("assocVtxDxyNtrk",
                                  "Rho Distance from first PV vs Ntrk of assoc; dxy (cm); Ntrk",
                                  800,0,4,200,0,200);
+  vtxPerf2D_["assocVtxChi2Ntrk"] = fs->make<TH2F>("assocVtxChi2Ntrk",
+                                 "Normalized Chi2 vs Ntrk of assoc; chi2/ndof; Ntrk",
+                                 200,0,50,200,0,200);
   vtxPerf2D_["assocVtxDxyDz"] = fs->make<TH2F>("assocVtxDxyDz",
                                  "Rho Distance from first PV vs Z distance; dxy (cm); dz (cm)",
                                  800,0,4,500,0,50);
+  vtxPerf2D_["assocVtxChi2Dz"] = fs->make<TH2F>("assocVtxChi2Dz",
+                                 "Normalized Chi2 vs Z distance; chi2/ndof; dz (cm)",
+                                 200,0,50.,500,0,50);
+  vtxPerf2D_["assocVtxChi2Dxy"] = fs->make<TH2F>("assocVtxChi2Dxy",
+                                 "Normalized Chi2 vs Rho distance; chi2/ndof; dxy (cm)",
+                                 200,0,50.,800,0,4);
   vtxPerf2D_["vtxCorrZ"] = fs->make<TH2F>("vtzCorrZ",
                                  "z position of first PV vs additional PVs; z_{trig} (cm); z_{assoc} (cm)",
                                  300,-30,30,300,-30,30);
