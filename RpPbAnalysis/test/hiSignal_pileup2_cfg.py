@@ -50,24 +50,24 @@ process.options = cms.untracked.PSet(
 
 # Production Info
 process.configurationMetadata = cms.untracked.PSet(
-    version = cms.untracked.string('$Revision: 1.4 $'),
+    version = cms.untracked.string('$Revision: 1.5 $'),
     annotation = cms.untracked.string('HIJING Minimum-Bias p-Pb 2 event pileup'),
     name = cms.untracked.string('$Source: /local/reps/CMSSW/UserCode/Appeltel/RpPbAnalysis/test/hiSignal_pileup2_cfg.py,v $')
 )
 
 # Additional output definition
-import random
-process.RandomNumberGeneratorService.hiSignal = cms.PSet(
-        initialSeed = cms.untracked.uint32(random.randrange(1,123456789)),
-        engineName = cms.untracked.string('HepJamesRandom')
-)
+#import random
+#process.RandomNumberGeneratorService.hiSignal = cms.PSet(
+#        initialSeed = cms.untracked.uint32(random.randrange(1,123456789)),
+#        engineName = cms.untracked.string('HepJamesRandom')
+#)
 
 #different seed
 ## ----- WARNING ----- Ensure your PYTHONPATH has the same information as sys.path! Else this will fail!
 # Without these three lines, the sim vertex will not be smeared correctly
-from IOMC.RandomEngine.RandomServiceHelper import RandomNumberServiceHelper
-randSvc = RandomNumberServiceHelper(process.RandomNumberGeneratorService)
-randSvc.populate()
+#from IOMC.RandomEngine.RandomServiceHelper import RandomNumberServiceHelper
+#randSvc = RandomNumberServiceHelper(process.RandomNumberGeneratorService)
+#randSvc.populate()
 
 # Output definition
 
