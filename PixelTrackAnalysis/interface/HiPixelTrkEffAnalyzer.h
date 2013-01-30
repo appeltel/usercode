@@ -19,11 +19,6 @@
 #include "Appeltel/PixelTrackAnalysis/interface/HiPixelTrkEffHistograms.h"
 #include "DataFormats/HeavyIonEvent/interface/CentralityProvider.h"
 
-#include "SimDataFormats/GeneratorProducts/interface/HepMCProduct.h"
-#include "HepMC/HeavyIon.h"
-
-//#include "DataFormats/TrackingRecHit/interface/TrackingRecHitFwd.h"
-#include "DataFormats/SiPixelDetId/interface/PixelSubdetector.h"
 
 // define track efficiency analyzer class
 class HiPixelTrkEffAnalyzer : public edm::EDAnalyzer {
@@ -38,8 +33,8 @@ class HiPixelTrkEffAnalyzer : public edm::EDAnalyzer {
       virtual void analyze(const edm::Event&, const edm::EventSetup&);
       virtual void endJob();
       
-      SimTrack_t setSimTrack(TrackingParticle&, const reco::Track&, size_t, float, float, float [2][5]);
-      RecTrack_t setRecTrack(reco::Track&, const TrackingParticle&, size_t, float, float, float [2][5]);
+      SimTrack_t setSimTrack(TrackingParticle&, const reco::Track&, size_t, float);
+      RecTrack_t setRecTrack(reco::Track&, const TrackingParticle&, size_t, float);
       bool testVertex(reco::Track&, double&, double&, double&, double&);
       std::pair<bool,bool> isAccepted(TrackingParticle&);
       int getLayerId(const PSimHit&);
@@ -52,24 +47,12 @@ class HiPixelTrkEffAnalyzer : public edm::EDAnalyzer {
       edm::InputTag associatorMap_;
       edm::InputTag vtxTags_;
       edm::InputTag bsTags_;
-      edm::InputTag genParticles_;  
-
+  
       const TrackerGeometry * theTracker;
       edm::Handle<reco::VertexCollection> vertexCollectionH;
       edm::Handle<reco::BeamSpot> beamSpotH;
       bool doAssociation_;
       bool hasSimInfo_;
-
-      bool selectSpecies_;
-      int species1_;
-      int species2_;
-
-      bool doFlow_;
-      bool doRP_;
-
-      bool removeWedge2010_;
-
-      std::vector<std::string> hepmcSrc_;
 
       CentralityProvider * centrality_;
      

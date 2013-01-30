@@ -27,8 +27,6 @@
 #include <stdio.h>
 #include <math.h>
 
-#include<iostream>
-
 //#define DEBUG
 
 HiPixelTrkEffAnalyzer::HiPixelTrkEffAnalyzer(const edm::ParameterSet& iConfig)
@@ -45,27 +43,6 @@ HiPixelTrkEffAnalyzer::HiPixelTrkEffAnalyzer(const edm::ParameterSet& iConfig)
 
   centrality_ = 0;
   histograms = new HiPixelTrkEffHistograms(iConfig);
-
-  std::cout << "Getting Parameters for Species \n";
-
-  selectSpecies_ = iConfig.exists("selectSpecies") ? iConfig.getParameter<bool>("selectSpecies") : false;
-  species1_ = iConfig.exists("species1") ? iConfig.getParameter<int>("species1") : 0;
-  species2_ = iConfig.exists("species2") ? iConfig.getParameter<int>("species2") : 0;
-
-  std::cout << "Species selected = " << selectSpecies_ << "  species1 = " << species1_
-            << " species2 = " << species2_ << "\n";
-
-  doFlow_ = iConfig.exists("doFlow") ? iConfig.getParameter<bool>("doFlow") : false;
-  doRP_ = iConfig.exists("doRP") ? iConfig.getParameter<bool>("doRP") : false;
-
-  removeWedge2010_ = iConfig.exists("removeWedge2010_") ? 
-      iConfig.getParameter<bool>("removeWedge2010") : false;
-
-  if( doFlow_ )
-    hepmcSrc_ = iConfig.getParameter<std::vector<std::string> >("generators");
-
-  if ( doFlow_ && doRP_ )
-    genParticles_ =  iConfig.getUntrackedParameter<edm::InputTag>("genParticles");
 
 }
 
@@ -92,86 +69,22 @@ HiPixelTrkEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
   iEvent.getByLabel(vtxTags_,vertexCollectionH);
   iEvent.getByLabel(bsTags_,beamSpotH);
 
-  // reaction plane
-
-  float rxnPlane = -999.;
+  LogDebug("HiTrkEffAnalyzer") <<" number of rec tracks = "<<trackCollection->size()<<std::endl;
 
   // Centrality information ----------------------                                                                                                                                                   
+
   int cbin = 39;
+
   if(!centrality_) centrality_ = new CentralityProvider(iSetup);
+
   centrality_->newEvent(iEvent,iSetup);   
+
   cbin = centrality_->getBin();
+
 
   // sim track collections
   float occHandle = (float)cbin+0.5; 
 
-
-  // event planes from gen
-
-  float ep[2][5];
-  for(int i=0;i<2;i++) { for(int j=0;j<5;j++) ep[i][j] = 0.; } 
-
-  if ( doFlow_ )
-  {
-   for(size_t ihep = 0; ihep < hepmcSrc_.size(); ++ihep)
-   {
-     edm::Handle<edm::HepMCProduct> hepmc;
-     iEvent.getByLabel(hepmcSrc_[ihep],hepmc);
-     const HepMC::HeavyIon* hi = hepmc->GetEvent()->heavy_ion();
-     if (hi) rxnPlane = hi->event_plane_angle();
-
-   } 
-  }
-
-  if ( doRP_ )
-  {
-
-     // Use Unit Weights for simplicity
-
-     edm::Handle<reco::GenParticleCollection> gens;
-     iEvent.getByLabel(genParticles_,gens);
-
-     double sumsin[2][5];
-     double sumcos[2][5];
-     for( int i=0;i<2;i++) { 
-       for( int j=0;j<5;j++) 
-       {
-         sumsin[i][j]=0.; 
-         sumcos[i][j]=0.; 
-       }
-     }
-
-     reco::GenParticleCollection::const_iterator particle = gens->begin();
-     for( ; particle != gens->end(); ++particle)
-     {
-       if( particle->status() == 1 &&
-           fabs(particle->eta()) <= 3.0 &&
-           particle->pt() >= 0.150 )
-       {
-         for(int i=0;i<5;i++)
-         {
-           if( particle->eta() > 0.5 )
-           {
-             sumcos[0][i] += cos(((double)(i+2)) * particle->phi() );
-             sumsin[0][i] += sin(((double)(i+2)) * particle->phi() );
-           }
-           if( particle->eta() < -0.5 )
-           {
-             sumcos[1][i] += cos(((double)(i+2)) * particle->phi() );
-             sumsin[1][i] += sin(((double)(i+2)) * particle->phi() );
-           }
- 
-         }
-       }
-     }
-
-     for(int i=0;i<5;i++) ep[0][i] = atan2(sumsin[0][i],sumcos[0][i]) / ((double)(i+2));     
-     for(int i=0;i<5;i++) ep[1][i] = atan2(sumsin[1][i],sumcos[1][i]) / ((double)(i+2));     
-     histograms->fillEPHistograms( ep,occHandle );
-
-  }
-
-  LogDebug("HiTrkEffAnalyzer") <<" number of rec tracks = "<<trackCollection->size()<<std::endl;
 
   if(hasSimInfo_) {
 
@@ -205,10 +118,6 @@ HiPixelTrkEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
                                    <<" map = ["<<associatorMap_<<" ] \n";
     }
     
-
-    //
-
-
     // -------------------- SIM loop ----------------------------------------
     
     for(TrackingParticleCollection::size_type i=0; i<TPCollectionHeff->size(); i++) {
@@ -217,15 +126,7 @@ HiPixelTrkEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
       TrackingParticle* tp=const_cast<TrackingParticle*>(tpr.get());
       
       if(tp->status() < 0 || tp->charge()==0) continue; //only charged primaries
-
-      if( selectSpecies_ )
-      {
-        bool sel = false;
-        if ( tp->pdgId() == species1_ ) sel = true;
-        if ( tp->pdgId() == species2_ ) sel = true;
-        if ( !sel ) continue;
-      }     
- 
+      
       std::vector<std::pair<edm::RefToBase<reco::Track>, double> > rt;
       const reco::Track* mtr=0;
       size_t nrec=0;
@@ -236,7 +137,7 @@ HiPixelTrkEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
 	if(nrec) mtr = rt.begin()->first.get();      
       }
       
-      SimTrack_t s = setSimTrack(*tp, *mtr, nrec, occHandle, rxnPlane, ep);
+      SimTrack_t s = setSimTrack(*tp, *mtr, nrec, occHandle);
       histograms->fillSimHistograms(s);  
       
 #ifdef DEBUG
@@ -256,7 +157,6 @@ HiPixelTrkEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
     edm::RefToBase<reco::Track> track(trackCollection, i);
     reco::Track* tr=const_cast<reco::Track*>(track.get());
     
-
     std::vector<std::pair<TrackingParticleRef, double> > tp;
     const TrackingParticle *mtp=0;
     size_t nsim=0;
@@ -267,7 +167,7 @@ HiPixelTrkEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
       if(nsim) mtp = tp.begin()->first.get();       
     }
 
-    RecTrack_t r = setRecTrack(*tr, *mtp, nsim, occHandle, rxnPlane, ep);
+    RecTrack_t r = setRecTrack(*tr, *mtp, nsim, occHandle);
     histograms->fillRecHistograms(r); 
 
 #ifdef DEBUG
@@ -312,18 +212,17 @@ HiPixelTrkEffAnalyzer::endJob()
 
 // ------------
 SimTrack_t 
-HiPixelTrkEffAnalyzer::setSimTrack(TrackingParticle& tp, const reco::Track& mtr, size_t nrec, float jet, float rxn, float rp[2][5])
+HiPixelTrkEffAnalyzer::setSimTrack(TrackingParticle& tp, const reco::Track& mtr, size_t nrec, float jet)
 {
 
   SimTrack_t s;
   s.ids = tp.pdgId();
   s.etas = tp.eta();
-  s.phis = tp.phi();
   s.pts = tp.pt();
   s.hits = tp.matchedHit();
   s.status = tp.status();
   std::pair<bool,bool> acc = isAccepted(tp);
-  s.acc = acc.first;
+  s.acc = acc.first || acc.second;
 
 #ifdef DEBUG
   edm::LogVerbatim("HiTrkEffAnalyzer")  
@@ -335,10 +234,7 @@ HiPixelTrkEffAnalyzer::setSimTrack(TrackingParticle& tp, const reco::Track& mtr,
 
   s.nrec = nrec;
   s.jetr = jet;
-  s.rxn = rxn;
-  for(int i=0;i<5;i++) s.rp[0][i] = rp[0][i]; 
-  for(int i=0;i<5;i++) s.rp[1][i] = rp[1][i]; 
- 
+  
   if(nrec > 0) {
     double dxy=0.0, dz=0.0, d0err=0.0, dzerr=0.0;
     testVertex(*const_cast<reco::Track*>(&mtr),dxy,dz,d0err,dzerr);
@@ -367,7 +263,7 @@ HiPixelTrkEffAnalyzer::setSimTrack(TrackingParticle& tp, const reco::Track& mtr,
 
 // ------------
 RecTrack_t 
-HiPixelTrkEffAnalyzer::setRecTrack(reco::Track& tr, const TrackingParticle& tp, size_t nsim, float jet, float rxn, float  rp[2][5])
+HiPixelTrkEffAnalyzer::setRecTrack(reco::Track& tr, const TrackingParticle& tp, size_t nsim, float jet)
 {
 
   RecTrack_t r;
@@ -397,9 +293,6 @@ HiPixelTrkEffAnalyzer::setRecTrack(reco::Track& tr, const TrackingParticle& tp, 
 
   r.nsim = nsim;
   r.jetr = jet;
-  r.rxn = rxn;
-  for(int i=0;i<5;i++) r.rp[0][i] = rp[0][i]; 
-  for(int i=0;i<5;i++) r.rp[1][i] = rp[1][i]; 
 
   if(nsim>0) {
     r.status = tp.status();
