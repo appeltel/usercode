@@ -64,10 +64,10 @@ class RpPbMCAnalyzer : public edm::EDAnalyzer {
 RpPbMCAnalyzer::RpPbMCAnalyzer(const edm::ParameterSet& iConfig):
 genSrc_(iConfig.getParameter<edm::InputTag>("genSrc")),
 vertexSrc_(iConfig.getParameter<edm::InputTag>("vertexSrc")),
-printDebug_(iConfig.getParameter<bool>("printDebug")),
 etaMax_(iConfig.getParameter<double>("etaMax")),
+rapidityShift_(iConfig.getParameter<double>("rapidityShift")),
 vzMax_(iConfig.getParameter<double>("vzMax")),
-rapidityShift_(iConfig.getParameter<double>("rapidityShift"))
+printDebug_(iConfig.getParameter<bool>("printDebug"))
 {
    //now do what ever initialization is needed
   edm::Service<TFileService> fs;
