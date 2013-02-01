@@ -199,7 +199,7 @@ RpPbVertexAnalyzer::initHistos(const edm::Service<TFileService> & fs)
 
   vtxPerf3D_["assocVtxDzNtrkNtrkLead"] = fs->make<TH3F>("assocVtxDzNtrkNtrkLead",
                                  "Z Distance from first PV vs Ntrk of assoc vs Ntrk of lead; dz (cm); Ntrk; NtrkLead",
-                                 500,0,50,200,0,200,400,0,400);
+                                 500,0,50,200,0,200,20,0,400);
 
 }
 
