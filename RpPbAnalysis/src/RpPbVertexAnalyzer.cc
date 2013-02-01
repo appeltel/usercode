@@ -19,6 +19,7 @@
 
 #include <TH1.h>
 #include <TH2.h>
+#include <TH3.h>
 #include <TGraph.h>
 
 #include "FWCore/Framework/interface/MakerMacros.h"
@@ -49,6 +50,7 @@ class RpPbVertexAnalyzer : public edm::EDAnalyzer {
       std::map<std::string,TH2F*> evtPerf2D_;
       std::map<std::string,TH1F*> vtxPerf_;
       std::map<std::string,TH2F*> vtxPerf2D_;
+      std::map<std::string,TH3F*> vtxPerf3D_;
 
       TH1F* events_;
       TH1F* vertices_;
@@ -140,6 +142,7 @@ RpPbVertexAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
      vtxPerf2D_["assocVtxChi2Dxy"]->Fill(vsorted[i].normalizedChi2(),dxy); 
      vtxPerf2D_["assocVtxChi2Dz"]->Fill(vsorted[i].normalizedChi2(),dz); 
      vtxPerf2D_["vtxCorrZ"]->Fill( vsorted[0].z(), vsorted[i].z() );
+     vtxPerf3D_["assocVtxDzNtrkNtrkLead"]->Fill(dz,vsorted[i].tracksSize(),vsorted[0].tracksSize()); 
    }
 
 }
@@ -193,6 +196,10 @@ RpPbVertexAnalyzer::initHistos(const edm::Service<TFileService> & fs)
   vtxPerf2D_["vtxCorrZ"] = fs->make<TH2F>("vtzCorrZ",
                                  "z position of first PV vs additional PVs; z_{trig} (cm); z_{assoc} (cm)",
                                  300,-30,30,300,-30,30);
+
+  vtxPerf3D_["assocVtxDzNtrkNtrkLead"] = fs->make<TH3F>("assocVtxDzNtrkNtrkLead",
+                                 "Z Distance from first PV vs Ntrk of assoc vs Ntrk of lead; dz (cm); Ntrk; NtrkLead",
+                                 500,0,50,200,0,200,400,0,400);
 
 }
 
