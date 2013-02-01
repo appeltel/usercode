@@ -53,10 +53,14 @@ pileupVertexFilterCutEandG = pileupVertexFilterCutG.clone(
     doDxyDzCut = cms.bool(True)
 )
 
-pileupVertexFilterDevelBits = cms.Sequence( 
-    pileupVertexFilterCutG +
-    pileupVertexFilterCutGloose +
-    pileupVertexFilterCutGtight +
-    pileupVertexFilterCutE + 
-    pileupVertexFilterCutEandG
+pileupVertexFilterCutW = pileupVertexFilterCutG.clone(
+    doDzNtrkCut = cms.bool(False),
+    doSurfaceCut = cms.bool(True)
 )
+
+pileupVertexFilterCutWplus = pileupVertexFilterCutG.clone(
+    doDzNtrkCut = cms.bool(False),
+    doSurfaceCut = cms.bool(True),
+    dxyVeto = cms.double(0.05)
+)  
+

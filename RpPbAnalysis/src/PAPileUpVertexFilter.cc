@@ -5,10 +5,10 @@
  *  (pileup). This is performed by looking at the characteristics of the 
  *  reconstructed vertices.
  *
- *  $Date: 2013/01/28 21:18:38 $
- *  $Revision: 1.4 $
+ *  $Date: 2013/01/28 23:09:02 $
+ *  $Revision: 1.5 $
  *
- *  \author E. Appelt - Vanderbilt University
+ *  \author E. Appelt - Vanderbilt University, Wei Li - Rice University
  *
  */
 
@@ -28,6 +28,8 @@
 #include <vector>
 #include <algorithm>
 
+#include "TF2.h"
+
 #include <DataFormats/VertexReco/interface/Vertex.h>
 #include <DataFormats/VertexReco/interface/VertexFwd.h>
 
@@ -46,12 +48,14 @@ class PAPileUpVertexFilter : public edm::EDFilter {
        edm::InputTag vtxSrc_;
        bool doDzNtrkCut_;
        bool doDxyDzCut_;
+       bool doSurfaceCut_;
        double dxyVeto_;
        double dzVeto_;
        double dxyDzCutPar0_;
        double dxyDzCutPar1_;
        std::vector<double> dzCutByNtrk_;
-       
+       std::vector<double> surfaceCutParameters_;
+       TF2* func2D_;
        
 
 };
@@ -61,16 +65,24 @@ PAPileUpVertexFilter::PAPileUpVertexFilter(const edm::ParameterSet& iConfig) :
 vtxSrc_(iConfig.getParameter<edm::InputTag>("vtxSrc")),
 doDzNtrkCut_(iConfig.getParameter<bool>("doDzNtrkCut")),
 doDxyDzCut_(iConfig.getParameter<bool>("doDxyDzCut")),
+doSurfaceCut_(iConfig.getParameter<bool>("doSurfaceCut")),
 dxyVeto_(iConfig.getParameter<double>("dxyVeto")),
 dzVeto_(iConfig.getParameter<double>("dzVeto")),
 dxyDzCutPar0_(iConfig.getParameter<double>("dxyDzCutPar0")),
 dxyDzCutPar1_(iConfig.getParameter<double>("dxyDzCutPar1")),
-dzCutByNtrk_(iConfig.getParameter<std::vector<double> >("dzCutByNtrk"))
+dzCutByNtrk_(iConfig.getParameter<std::vector<double> >("dzCutByNtrk")),
+surfaceCutParameters_(iConfig.getParameter<std::vector<double> >("surfaceCutParameters"))
 {
+  func2D_ = new TF2("func2D","[2]*exp(-x**2/[0])*x**[3]+[1]+([6]*exp(-x/[4])*x**[7]+[5])*(y-[10]*exp(-x**2/[8])*x**[11]-[9])*(y-[10]*exp(-x**2/[8])*x**[11]-[9])",0,50.0,0,500);
+  if( surfaceCutParameters_.size() == 12)
+  {
+      for(int i=0;i<12;i++) func2D_->SetParameter(i,surfaceCutParameters_[i]);
+  }
 }
 
 PAPileUpVertexFilter::~PAPileUpVertexFilter()
 {
+  delete func2D_;
 }
 
 bool
@@ -99,6 +111,7 @@ PAPileUpVertexFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
      double dy = fabs( vsorted[i].y() - vsorted[0].y() );
      double dxy  = sqrt ( dx*dx + dy*dy );
      double nTrk = vsorted[i].tracksSize();
+     double nTrkLead = vsorted[0].tracksSize();
 
      // dxy Veto: only filter for small dxy
      if ( dxy > dxyVeto_ ) continue;
@@ -125,6 +138,13 @@ PAPileUpVertexFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
      {
        if( dz > dxyDzCutPar0_ + dxyDzCutPar1_ * dxy )
          accepted = false; 
+     }
+
+     // surfaceCut: filter on PVs above a curved surface of the form Ntrk(dz, NtrkLead)
+     if ( doSurfaceCut_ )
+     {
+       if(nTrk>func2D_->Eval(dz,nTrkLead) && dz>0.2) accepted = false; 
+       if(nTrk>func2D_->Eval(0.2,nTrkLead) && dz<=0.2) accepted = false;
      }
 
    }
