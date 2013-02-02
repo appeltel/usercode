@@ -5,8 +5,8 @@
  *  (pileup). This is performed by looking at the characteristics of the 
  *  reconstructed vertices.
  *
- *  $Date: 2013/01/28 23:09:02 $
- *  $Revision: 1.5 $
+ *  $Date: 2013/02/01 19:51:45 $
+ *  $Revision: 1.6 $
  *
  *  \author E. Appelt - Vanderbilt University, Wei Li - Rice University
  *
@@ -53,7 +53,9 @@ class PAPileUpVertexFilter : public edm::EDFilter {
        double dzVeto_;
        double dxyDzCutPar0_;
        double dxyDzCutPar1_;
+       double surfaceMinDzEval_;
        std::vector<double> dzCutByNtrk_;
+       std::string surfaceFunctionString_;
        std::vector<double> surfaceCutParameters_;
        TF2* func2D_;
        
@@ -70,14 +72,21 @@ dxyVeto_(iConfig.getParameter<double>("dxyVeto")),
 dzVeto_(iConfig.getParameter<double>("dzVeto")),
 dxyDzCutPar0_(iConfig.getParameter<double>("dxyDzCutPar0")),
 dxyDzCutPar1_(iConfig.getParameter<double>("dxyDzCutPar1")),
+surfaceMinDzEval_(iConfig.getParameter<double>("surfaceMinDzEval")),
 dzCutByNtrk_(iConfig.getParameter<std::vector<double> >("dzCutByNtrk")),
+surfaceFunctionString_(iConfig.getParameter<std::string>("surfaceFunctionString")),
 surfaceCutParameters_(iConfig.getParameter<std::vector<double> >("surfaceCutParameters"))
 {
-  func2D_ = new TF2("func2D","[2]*exp(-x**2/[0])*x**[3]+[1]+([6]*exp(-x/[4])*x**[7]+[5])*(y-[10]*exp(-x**2/[8])*x**[11]-[9])*(y-[10]*exp(-x**2/[8])*x**[11]-[9])",0,50.0,0,500);
-  if( surfaceCutParameters_.size() == 12)
+  func2D_ = new TF2("func2D",surfaceFunctionString_.c_str(),0,50.0,0,500);
+  if( (int)surfaceCutParameters_.size() == func2D_->GetNpar())
   {
-      for(int i=0;i<12;i++) func2D_->SetParameter(i,surfaceCutParameters_[i]);
+      for(unsigned int i=0;i<surfaceCutParameters_.size();i++) func2D_->SetParameter(i,surfaceCutParameters_[i]);
   }
+  else
+  {
+     // really need to quit with an error that the configuration is misformed
+     for(unsigned int i=0;i<surfaceCutParameters_.size();i++) func2D_->SetParameter(i,0); 
+  } 
 }
 
 PAPileUpVertexFilter::~PAPileUpVertexFilter()
@@ -143,8 +152,8 @@ PAPileUpVertexFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
      // surfaceCut: filter on PVs above a curved surface of the form Ntrk(dz, NtrkLead)
      if ( doSurfaceCut_ )
      {
-       if(nTrk>func2D_->Eval(dz,nTrkLead) && dz>0.2) accepted = false; 
-       if(nTrk>func2D_->Eval(0.2,nTrkLead) && dz<=0.2) accepted = false;
+       if(nTrk>func2D_->Eval(dz,nTrkLead) && dz>surfaceMinDzEval_) accepted = false; 
+       if(nTrk>func2D_->Eval(surfaceMinDzEval_,nTrkLead) && dz<=surfaceMinDzEval_) accepted = false;
      }
 
    }
