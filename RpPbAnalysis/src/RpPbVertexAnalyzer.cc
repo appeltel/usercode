@@ -31,6 +31,7 @@
 #include <DataFormats/TrackReco/interface/Track.h>
 #include <DataFormats/TrackReco/interface/TrackFwd.h>
 #include "DataFormats/HeavyIonEvent/interface/CentralityProvider.h"
+#include <DataFormats/Scalers/interface/LumiScalers.h>
 
 class RpPbVertexAnalyzer : public edm::EDAnalyzer {
    public:
@@ -41,6 +42,7 @@ class RpPbVertexAnalyzer : public edm::EDAnalyzer {
    private:
       virtual void beginJob() ;
       virtual void analyze(const edm::Event&, const edm::EventSetup&);
+      virtual void beginLuminosityBlock (edm::LuminosityBlock const &, edm::EventSetup const &);
       virtual void endJob() ;
       void initHistos(const edm::Service<TFileService> & fs);
 
@@ -57,15 +59,18 @@ class RpPbVertexAnalyzer : public edm::EDAnalyzer {
 
       int nevt_;
       int nvertex_;
+      bool newLumi_;
 
       edm::InputTag vertexSrc_;
       CentralityProvider * centrality_;
 
+ 
 };
 
 RpPbVertexAnalyzer::RpPbVertexAnalyzer(const edm::ParameterSet& iConfig):
 nevt_(0),
 nvertex_(0),
+newLumi_(true),
 vertexSrc_(iConfig.getParameter<edm::InputTag>("vertexSrc"))
 {
    edm::Service<TFileService> fs;
@@ -75,6 +80,12 @@ vertexSrc_(iConfig.getParameter<edm::InputTag>("vertexSrc"))
 
 RpPbVertexAnalyzer::~RpPbVertexAnalyzer()
 {
+}
+
+void
+RpPbVertexAnalyzer::beginLuminosityBlock(edm::LuminosityBlock const & b, edm::EventSetup const & e )
+{
+  newLumi_  = true;
 }
 
 void
@@ -93,7 +104,6 @@ RpPbVertexAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
       return  a.tracksSize() > b.tracksSize() ? true : false ;
    });
 
-  
    nevt_++;
    events_->Fill(0.5); 
    evtPerf_["Nvtx"]->Fill(vsorted.size());
@@ -102,6 +112,16 @@ RpPbVertexAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
    evtPerf_["Lumi"]->Fill(lumi);
    evtPerf_["NvtxLumi"]->Fill(lumi,vsorted.size());
 
+   if( newLumi_ ) 
+   {
+     Handle<std::vector<LumiScalers> > lcol;
+     iEvent.getByLabel("scalersRawToDigi", lcol);
+ 
+     if( lcol->size() > 0 )
+       evtPerf_["puLumi"]->Fill(lumi,lcol->begin()->pileup());
+     newLumi_ = false;
+   } 
+ 
    if (!centrality_) centrality_ = new CentralityProvider(iSetup);
    centrality_->newEvent(iEvent,iSetup); 
    evtPerf_["centrality"]->Fill(centrality_->getBin());
@@ -161,6 +181,7 @@ RpPbVertexAnalyzer::initHistos(const edm::Service<TFileService> & fs)
 
   evtPerf_["NvtxLumi"] = fs->make<TH1F>("evtNvtxLumi","Primary Vertices by Lumi",200,0,2000);
   evtPerf_["Lumi"] = fs->make<TH1F>("evtLumi","Events by Lumi",200,0,2000);
+  evtPerf_["puLumi"] = fs->make<TH1F>("puLumi","Pileup by Lumi",2000,0,2000);
 
   vtxPerf_["Ntrk"] = fs->make<TH1F>("vtxNtrk","Tracks per vertex",50,0,200);
   vtxPerf_["x"] = fs->make<TH1F>("vtxX","Vertex x position",1000,-1,1);
