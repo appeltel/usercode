@@ -23,4 +23,5 @@
 <use name="DataFormats/VertexReco"/>
 <use name="DataFormats/HepMCCandidate"/>
 <use name="DataFormats/Math"/>
+<use name="DataFormats/Scalers"/>
 <flags EDM_PLUGIN="1"/>
