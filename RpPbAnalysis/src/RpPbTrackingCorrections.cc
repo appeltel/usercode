@@ -54,6 +54,7 @@ class RpPbTrackingCorrections : public edm::EDAnalyzer {
       // ----------member data ---------------------------
 
       std::map<std::string,TH3F*> trkCorr3D_;
+      std::map<std::string,TH2F*> trkCorr2D_;
 
       edm::InputTag vertexSrc_;
       edm::InputTag trackSrc_;
@@ -165,6 +166,7 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
      if( !passesCuts(*tr, vsorted[0]) ) continue;
 
      trkCorr3D_["hrec3D"]->Fill(tr->eta(), tr->pt(), occ);
+     trkCorr2D_["hrec"]->Fill(tr->eta(), tr->pt());
 
      // look for match to simulated particle, use first match if it exists
      std::vector<std::pair<TrackingParticleRef, double> > tp;
@@ -174,10 +176,12 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
        tp = recSimColl[track];
        mtp = tp.begin()->first.get();  
        if( mtp->status() < 0) trkCorr3D_["hsec3D"]->Fill(tr->eta(), tr->pt(), occ);     
+       if( mtp->status() < 0) trkCorr2D_["hsec"]->Fill(tr->eta(), tr->pt());     
      }
      else
      {
        trkCorr3D_["hfak3D"]->Fill(tr->eta(), tr->pt(), occ);
+       trkCorr2D_["hfak"]->Fill(tr->eta(), tr->pt());
      }
 
    }
@@ -194,6 +198,7 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
      if(tp->status() < 0 || tp->charge()==0) continue; //only charged primaries
      
      trkCorr3D_["hsim3D"]->Fill(tp->eta(),tp->pt(), occ);
+     trkCorr2D_["hsim"]->Fill(tp->eta(),tp->pt());
 
      // find number of matched reco tracks that pass cuts
      std::vector<std::pair<edm::RefToBase<reco::Track>, double> > rt;
@@ -211,6 +216,8 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
      
      if(nrec>0) trkCorr3D_["heff3D"]->Fill(tp->eta(),tp->pt(), occ);
      if(nrec>1) trkCorr3D_["hmul3D"]->Fill(tp->eta(),tp->pt(), occ);
+     if(nrec>0) trkCorr2D_["heff"]->Fill(tp->eta(),tp->pt());
+     if(nrec>1) trkCorr2D_["hmul"]->Fill(tp->eta(),tp->pt());
 
    }
 
@@ -249,16 +256,27 @@ void
 RpPbTrackingCorrections::initHistos(const edm::Service<TFileService> & fs)
 {
 
-  std::vector<std::string> hNames = { "hsim3D", "hrec3D", "hmul3D", "hfak3D",
+  std::vector<std::string> hNames3D = { "hsim3D", "hrec3D", "hmul3D", "hfak3D",
                                         "heff3D", "hsec3D" };
 
-  for( auto name : hNames )
+  for( auto name : hNames3D )
   {
      trkCorr3D_[name] = fs->make<TH3F>(name.c_str(),";#eta;p_{T};occ var",
                            etaBins_.size()-1, &etaBins_[0],
                            ptBins_.size()-1, &ptBins_[0],
                            occBins_.size()-1, &occBins_[0]); 
   }
+
+  std::vector<std::string> hNames2D = { "hsim", "hrec", "hmul", "hfak",
+                                        "heff", "hsec" };
+
+  for( auto name : hNames2D )
+  {
+     trkCorr2D_[name] = fs->make<TH2F>(name.c_str(),";#eta;p_{T}",
+                           etaBins_.size()-1, &etaBins_[0],
+                           ptBins_.size()-1, &ptBins_[0]);
+  }
+
 
 }
 
