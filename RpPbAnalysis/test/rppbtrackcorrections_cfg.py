@@ -35,7 +35,7 @@ process.HeavyIonGlobalParameters = cms.PSet(
 process.load("SimTracker.TrackAssociation.trackingParticleRecoTrackAsssociation_cfi")
 
 process.tpRecoAssocGeneralTracks = process.trackingParticleRecoTrackAsssociation.clone()
-process.tpRecoAssocGeneralTracks.label_tr = cms.InputTag("hiGeneralTracks")
+process.tpRecoAssocGeneralTracks.label_tr = cms.InputTag("generalTracks")
 
 process.load("SimTracker.TrackAssociation.TrackAssociatorByHits_cfi")
 process.TrackAssociatorByHits.SimToRecoDenominator = cms.string('reco')
@@ -57,6 +57,7 @@ process.GlobalTag.globaltag = 'STARTHI53_V25::All'
 process.p = cms.Path( 
                       process.siPixelRecHits *
                       process.pACentrality *
+                      process.tpRecoAssocGeneralTracks *
                       process.pPbTrkCorr 
 )
 
