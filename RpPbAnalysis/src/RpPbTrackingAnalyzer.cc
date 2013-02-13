@@ -19,6 +19,7 @@
 
 #include <TH1.h>
 #include <TH2.h>
+#include <TH3.h>
 #include <TGraph.h>
 
 #include "FWCore/Framework/interface/MakerMacros.h"
@@ -29,7 +30,6 @@
 #include <DataFormats/VertexReco/interface/VertexFwd.h>
 #include <DataFormats/TrackReco/interface/Track.h>
 #include <DataFormats/TrackReco/interface/TrackFwd.h>
-#include "DataFormats/HeavyIonEvent/interface/CentralityProvider.h"
 
 class RpPbTrackingAnalyzer : public edm::EDAnalyzer {
    public:
@@ -51,6 +51,8 @@ class RpPbTrackingAnalyzer : public edm::EDAnalyzer {
       std::map<std::string,TH2F*> trkPerf2D_;
       std::map<std::string,TH1F*> vtxPerf_;
       std::map<std::string,TH2F*> vtxPerf2D_;
+      
+      TH3F* trkSpectrum_; 
 
       TH1F* events_;
       TH1F* vertices_;
@@ -76,6 +78,13 @@ class RpPbTrackingAnalyzer : public edm::EDAnalyzer {
       double dzErrMax_;
       double ptErrMax_;
 
+      std::vector<double> ptBins_;
+      std::vector<double> etaBins_;
+      std::vector<double> occBins_;
+
+      bool occByCentrality_;
+      bool occByNPixelTrk_;
+
 };
 
 RpPbTrackingAnalyzer::RpPbTrackingAnalyzer(const edm::ParameterSet& iConfig):
@@ -85,23 +94,21 @@ nvertex_(0),
 vertexSrc_(iConfig.getParameter<edm::InputTag>("vertexSrc")),
 trackSrc_(iConfig.getParameter<edm::InputTag>("trackSrc")),
 etaMin_(iConfig.getParameter<double>("etaMin")),
-etaMax_(iConfig.getParameter<double>("etaMax"))
+etaMax_(iConfig.getParameter<double>("etaMax")),
+ptMin_(iConfig.getParameter<double>("ptMin")),
+applyCuts_(iConfig.getParameter<bool>("applyCuts")),
+qualityString_(iConfig.getParameter<std::string>("qualityString")),
+dxyErrMax_(iConfig.getParameter<double>("dzErrMax")),
+dzErrMax_(iConfig.getParameter<double>("dzErrMax")),
+ptErrMax_(iConfig.getParameter<double>("ptErrMax")),
+ptBins_(iConfig.getParameter<std::vector<double> >("ptBins")),
+etaBins_(iConfig.getParameter<std::vector<double> >("etaBins")),
+occBins_(iConfig.getParameter<std::vector<double> >("occBins")),
+occByCentrality_(iConfig.getParameter<bool>("occByCentrality")),
+occByNPixelTrk_(iConfig.getParameter<bool>("occByNPixelTrk"))
 {
    edm::Service<TFileService> fs;
    initHistos(fs);
-   ptMin_ = iConfig.exists("ptMin") ? iConfig.getParameter<double>("ptMin") : 0.0;
-
-   applyCuts_ = iConfig.exists("applyCuts") ? 
-                iConfig.getParameter<bool>("applyCuts") : false ;
-   qualityString_ = iConfig.exists("qualityString") ?
-                    iConfig.getParameter<std::string>("qualityString") : "highPurity" ;
-   dxyErrMax_ = iConfig.exists("dxyErrMax") ?
-                iConfig.getParameter<double>("dxyErrMax") : 3.0 ;
-   dzErrMax_ = iConfig.exists("dzErrMax") ?
-                iConfig.getParameter<double>("dzErrMax") : 3.0 ;
-   ptErrMax_ = iConfig.exists("ptErrMax") ?
-                iConfig.getParameter<double>("ptErrMax") : 0.1 ;
-
    centrality_ = 0;
 }
 
@@ -142,6 +149,11 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
    centrality_->newEvent(iEvent,iSetup); 
    evtPerf_["centrality"]->Fill(centrality_->getBin());
 
+   // determine occupancy variable for event
+   double occ = 0.;  
+   if( occByCentrality_) occ = centrality_->centralityValue();   
+   if( occByNPixelTrk_) occ = centrality_->raw()->NpixelTracks();   
+
    int vcount = 0; 
    for( const auto & vi :  vsorted )
    {
@@ -179,29 +191,34 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
      vyErr=vsorted.begin()->yError();
    }
 
+
+
+
    for( const auto & track : * tcol )
    {
 
      tracks_->Fill(0.5);
 
+     double dxy=0.0, dz=0.0, dxysigma=0.0, dzsigma=0.0;
+     dxy = track.dxy(vtxPoint);
+     dz = track.dz(vtxPoint);
+     dxysigma = sqrt(track.d0Error()*track.d0Error()+vxErr*vyErr);
+     dzsigma = sqrt(track.dzError()*track.dzError()+vzErr*vzErr);
+       
+     if ( applyCuts_)
+     {
+       if(track.quality(reco::TrackBase::qualityByName(qualityString_)) != 1) 
+        continue;
+       if(fabs(dxy/dxysigma) > dxyErrMax_) continue;
+       if(fabs(dz/dzsigma) > dzErrMax_) continue;
+       if(track.ptError() / track.pt() > ptErrMax_) continue;
+     }
+
+     trkSpectrum_->Fill( track.eta(), track.pt(), occ);
+         
      if( track.eta() <= etaMax_ && track.eta() >= etaMin_ && track.pt() > ptMin_)
      {
 
-       double dxy=0.0, dz=0.0, dxysigma=0.0, dzsigma=0.0;
-       dxy = track.dxy(vtxPoint);
-       dz = track.dz(vtxPoint);
-       dxysigma = sqrt(track.d0Error()*track.d0Error()+vxErr*vyErr);
-       dzsigma = sqrt(track.dzError()*track.dzError()+vzErr*vzErr);
-       
-       if ( applyCuts_)
-       {
-         if(track.quality(reco::TrackBase::qualityByName(qualityString_)) != 1) 
-           continue;
-         if(fabs(dxy/dxysigma) > dxyErrMax_) continue;
-         if(fabs(dz/dzsigma) > dzErrMax_) continue;
-         if(track.ptError() / track.pt() > ptErrMax_) continue;
-       }
-         
        trackseta_->Fill(0.5);
        trkPerf_["Nhit"]->Fill(track.numberOfValidHits()); 
        trkPerf_["pt"]->Fill(track.pt()); 
@@ -228,6 +245,11 @@ RpPbTrackingAnalyzer::initHistos(const edm::Service<TFileService> & fs)
   tracks_ = fs->make<TH1F>("tracks","",1,0,1);
   trackseta_ = fs->make<TH1F>("trackseta","",1,0,1);
   vertices_ = fs->make<TH1F>("vertices","",1,0,1);
+
+  trkSpectrum_ = fs->make<TH3F>("trkSpectrum",";#eta;p_{T};occ var",
+                           etaBins_.size()-1, &etaBins_[0],
+                           ptBins_.size()-1, &ptBins_[0],
+                           occBins_.size()-1, &occBins_[0]); 
 
   evtPerf_["Ntrk"] = fs->make<TH1F>("evtNtrk","Tracks per event",100,0,400);
   evtPerf_["Nvtx"] = fs->make<TH1F>("evtNvtx","Primary Vertices per event",10,0,10);
