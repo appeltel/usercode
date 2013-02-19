@@ -49,6 +49,7 @@ class RpPbTrackingAnalyzer : public edm::EDAnalyzer {
       std::map<std::string,TH2F*> evtPerf2D_;
       std::map<std::string,TH1F*> trkPerf_;
       std::map<std::string,TH2F*> trkPerf2D_;
+      std::map<std::string,TH3F*> trkPerf3D_;
       std::map<std::string,TH1F*> vtxPerf_;
       std::map<std::string,TH2F*> vtxPerf2D_;
       
@@ -129,10 +130,14 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
   
    std::vector<reco::Vertex> vsorted = *vertex;
    // sort the vertcies by number of tracks in descending order
+   // use chi2 as tiebreaker
    std::sort( vsorted.begin(), vsorted.end(), 
               []( reco::Vertex a, reco::Vertex b) 
    {
-      return  a.tracksSize() > b.tracksSize() ? true : false ;
+      if( a.tracksSize() != b.tracksSize() )
+        return  a.tracksSize() > b.tracksSize() ? true : false ;
+      else
+        return  a.chi2() < b.chi2() ? true : false ;  
    });
 
   
@@ -231,6 +236,12 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
        trkPerf_["chi2"]->Fill(track.normalizedChi2());
        trkPerf_["pterr"]->Fill(track.ptError() / track.pt() );
        trkPerf2D_["etavz"]->Fill( vtxPoint.z(), track.eta() );
+       trkPerf3D_["Nhit3D"]->Fill(track.eta(), track.pt(), track.numberOfValidHits());
+       trkPerf3D_["phi3D"]->Fill(track.eta(), track.pt(), track.phi());
+       trkPerf3D_["dxyErr3D"]->Fill(track.eta(), track.pt(), dxy/dxysigma);
+       trkPerf3D_["dzErr3D"]->Fill(track.eta(), track.pt(), dz/dzsigma);
+       trkPerf3D_["chi23D"]->Fill(track.eta(), track.pt(), track.normalizedChi2());
+       trkPerf3D_["pterr3D"]->Fill(track.eta(), track.pt(), track.ptError() / track.pt() );
        ntrack_++;
      }
 
@@ -251,6 +262,43 @@ RpPbTrackingAnalyzer::initHistos(const edm::Service<TFileService> & fs)
                            etaBins_.size()-1, &etaBins_[0],
                            ptBins_.size()-1, &ptBins_[0],
                            occBins_.size()-1, &occBins_[0]); 
+
+  std::vector<double> dumBins;
+  dumBins.clear(); 
+  for( double i = 0.; i<36.; i += 1.) dumBins.push_back(i);
+  trkPerf3D_["Nhit3D"] = fs->make<TH3F>("trkNhit", "Tracks by Number of Valid Hits;N hits",    
+                           etaBins_.size()-1, &etaBins_[0],
+                           ptBins_.size()-1, &ptBins_[0],
+                           dumBins.size()-1, &dumBins[0]);
+  dumBins.clear();  
+  for( double i = -3.15; i<3.151; i += 6.30/100.) dumBins.push_back(i);
+  trkPerf3D_["phi3D"] = fs->make<TH3F>("trkPhi", "Track Azimuthal Distribution;#phi",
+                           etaBins_.size()-1, &etaBins_[0],
+                           ptBins_.size()-1, &ptBins_[0],
+                           dumBins.size()-1, &dumBins[0]);
+  dumBins.clear();    
+  for( double i = 0.; i<6.01; i += 6./60.) dumBins.push_back(i);
+  trkPerf3D_["chi23D"] = fs->make<TH3F>("trkChi2", "Track Normalized #chi^{2};#chi^{2}/n.d.o.f",
+                           etaBins_.size()-1, &etaBins_[0],
+                           ptBins_.size()-1, &ptBins_[0],
+                           dumBins.size()-1, &dumBins[0]);
+  dumBins.clear();
+  for( double i = 0.0; i<0.201; i += 0.2/50.) dumBins.push_back(i);
+  trkPerf3D_["pterr3D"] = fs->make<TH3F>("trkPterr", "Track p_{T} error;#delta p_{T} / p_{T}",
+                           etaBins_.size()-1, &etaBins_[0],
+                           ptBins_.size()-1, &ptBins_[0],
+                           dumBins.size()-1, &dumBins[0]);
+  dumBins.clear();
+  for( double i = -8.; i<8.01; i += 16./100.) dumBins.push_back(i);
+  trkPerf3D_["dxyErr3D"] = fs->make<TH3F>("trkDxyErr", "Transverse DCA Significance;dxy / #sigma_{dxy}",
+                           etaBins_.size()-1, &etaBins_[0],
+                           ptBins_.size()-1, &ptBins_[0],
+                           dumBins.size()-1, &dumBins[0]);
+  trkPerf3D_["dzErr3D"] = fs->make<TH3F>("trkDzErr", "Longitudinal DCA Significance;dz / #sigma_{dz}",
+                           etaBins_.size()-1, &etaBins_[0],
+                           ptBins_.size()-1, &ptBins_[0],
+                           dumBins.size()-1, &dumBins[0]);
+
 
   evtPerf_["Ntrk"] = fs->make<TH1F>("evtNtrk","Tracks per event",100,0,400);
   evtPerf_["Nvtx"] = fs->make<TH1F>("evtNvtx","Primary Vertices per event",10,0,10);
