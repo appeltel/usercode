@@ -230,6 +230,7 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
        trkPerf_["dzErr"]->Fill(dz/dzsigma); 
        trkPerf_["chi2"]->Fill(track.normalizedChi2());
        trkPerf_["pterr"]->Fill(track.ptError() / track.pt() );
+       trkPerf2D_["etavz"]->Fill( vtxPoint.z(), track.eta() );
        ntrack_++;
      }
 
@@ -285,7 +286,8 @@ RpPbTrackingAnalyzer::initHistos(const edm::Service<TFileService> & fs)
   trkPerf_["dzErr"] = fs->make<TH1F>("trkDzErr", "Longitudinal DCA Significance;dz / #sigma_{dz}",100,-8,8);
 
   trkPerf2D_["etaphi"] = fs->make<TH2F>("trkEtaPhi","Track Eta-Phi Map;#eta;#phi",50,-2.5,2.5,100,-3.15,3.15);
-
+  trkPerf2D_["etavz"] = fs->make<TH2F>("trkEtaVz","Track Eta vs Vertex z;Vertex z (cm);#eta",
+                                       100,-30,30,100,-3.0,3.0);
 
 }
 
