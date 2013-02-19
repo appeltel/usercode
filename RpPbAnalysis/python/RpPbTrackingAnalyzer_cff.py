@@ -4,6 +4,10 @@ import Appeltel.RpPbAnalysis.RpPbTrackingAnalyzer_cfi
 
 trkAna_etaFull = Appeltel.RpPbAnalysis.RpPbTrackingAnalyzer_cfi.trkAna.clone()
 
+trkAna_etaFullQuality = trkAna_etaFull.clone(
+        applyCuts = cms.bool(True)
+)
+
 trkAna_etaN2 = trkAna_etaFull.clone(
    etaMin = cms.double(-2.5),
    etaMax = cms.double(-1.5)
@@ -38,6 +42,7 @@ trkAna_etaFull_noBS = trkAna_etaFull.clone(
 )
 
 trkAnaMinBias = cms.Sequence( trkAna_etaFull 
+                              * trkAna_etaFullQuality
                               * trkAna_etaN2
                               * trkAna_etaN1
                               * trkAna_eta0
@@ -45,7 +50,7 @@ trkAnaMinBias = cms.Sequence( trkAna_etaFull
                               * trkAna_etaP2
                               * trkAna_etaFull_pixel
                               * trkAna_etaFull_noBS
-                            )
+)
 
 trkAna_etaFull_highPt = trkAna_etaFull.clone(
    ptMin = cms.double(6.0)
