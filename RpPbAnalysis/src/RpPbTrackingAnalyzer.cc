@@ -266,35 +266,35 @@ RpPbTrackingAnalyzer::initHistos(const edm::Service<TFileService> & fs)
   std::vector<double> dumBins;
   dumBins.clear(); 
   for( double i = 0.; i<36.; i += 1.) dumBins.push_back(i);
-  trkPerf3D_["Nhit3D"] = fs->make<TH3F>("trkNhit", "Tracks by Number of Valid Hits;N hits",    
+  trkPerf3D_["Nhit3D"] = fs->make<TH3F>("trkNhit3D", "Tracks by Number of Valid Hits;N hits",    
                            etaBins_.size()-1, &etaBins_[0],
                            ptBins_.size()-1, &ptBins_[0],
                            dumBins.size()-1, &dumBins[0]);
   dumBins.clear();  
   for( double i = -3.15; i<3.151; i += 6.30/100.) dumBins.push_back(i);
-  trkPerf3D_["phi3D"] = fs->make<TH3F>("trkPhi", "Track Azimuthal Distribution;#phi",
+  trkPerf3D_["phi3D"] = fs->make<TH3F>("trkPhi3D", "Track Azimuthal Distribution;#phi",
                            etaBins_.size()-1, &etaBins_[0],
                            ptBins_.size()-1, &ptBins_[0],
                            dumBins.size()-1, &dumBins[0]);
   dumBins.clear();    
   for( double i = 0.; i<6.01; i += 6./60.) dumBins.push_back(i);
-  trkPerf3D_["chi23D"] = fs->make<TH3F>("trkChi2", "Track Normalized #chi^{2};#chi^{2}/n.d.o.f",
+  trkPerf3D_["chi23D"] = fs->make<TH3F>("trkChi23D", "Track Normalized #chi^{2};#chi^{2}/n.d.o.f",
                            etaBins_.size()-1, &etaBins_[0],
                            ptBins_.size()-1, &ptBins_[0],
                            dumBins.size()-1, &dumBins[0]);
   dumBins.clear();
   for( double i = 0.0; i<0.201; i += 0.2/50.) dumBins.push_back(i);
-  trkPerf3D_["pterr3D"] = fs->make<TH3F>("trkPterr", "Track p_{T} error;#delta p_{T} / p_{T}",
+  trkPerf3D_["pterr3D"] = fs->make<TH3F>("trkPterr3D", "Track p_{T} error;#delta p_{T} / p_{T}",
                            etaBins_.size()-1, &etaBins_[0],
                            ptBins_.size()-1, &ptBins_[0],
                            dumBins.size()-1, &dumBins[0]);
   dumBins.clear();
   for( double i = -8.; i<8.01; i += 16./100.) dumBins.push_back(i);
-  trkPerf3D_["dxyErr3D"] = fs->make<TH3F>("trkDxyErr", "Transverse DCA Significance;dxy / #sigma_{dxy}",
+  trkPerf3D_["dxyErr3D"] = fs->make<TH3F>("trkDxyErr3D", "Transverse DCA Significance;dxy / #sigma_{dxy}",
                            etaBins_.size()-1, &etaBins_[0],
                            ptBins_.size()-1, &ptBins_[0],
                            dumBins.size()-1, &dumBins[0]);
-  trkPerf3D_["dzErr3D"] = fs->make<TH3F>("trkDzErr", "Longitudinal DCA Significance;dz / #sigma_{dz}",
+  trkPerf3D_["dzErr3D"] = fs->make<TH3F>("trkDzErr3D", "Longitudinal DCA Significance;dz / #sigma_{dz}",
                            etaBins_.size()-1, &etaBins_[0],
                            ptBins_.size()-1, &ptBins_[0],
                            dumBins.size()-1, &dumBins[0]);
