@@ -43,13 +43,18 @@ class RpPbTrackingCorrections : public edm::EDAnalyzer {
       explicit RpPbTrackingCorrections(const edm::ParameterSet&);
       ~RpPbTrackingCorrections();
 
+      static bool vtxSort( const reco::Vertex &  a, const reco::Vertex & b );
 
    private:
       virtual void beginJob() ;
       virtual void analyze(const edm::Event&, const edm::EventSetup&);
       virtual void endJob() ;
       void initHistos(const edm::Service<TFileService> & fs);
-      bool passesCuts(const reco::Track & track, const reco::Vertex & vertex);
+      bool passesTrackCuts(const reco::Track & track, const reco::Vertex & vertex);
+      double bestJetEt( const reco::Track & tr, 
+                        const std::vector<const pat::Jet *> & jets );
+      double bestJetEt( const TrackingParticle & tp, 
+                        const std::vector<const pat::Jet *> & jets );
 
       // ----------member data ---------------------------
 
@@ -61,6 +66,7 @@ class RpPbTrackingCorrections : public edm::EDAnalyzer {
       edm::InputTag tpFakSrc_;
       edm::InputTag tpEffSrc_;
       edm::InputTag associatorMap_;
+      edm::InputTag jetSrc_;
 
       std::vector<double> ptBins_;
       std::vector<double> etaBins_;
@@ -68,10 +74,18 @@ class RpPbTrackingCorrections : public edm::EDAnalyzer {
 
       bool occByCentrality_;
       bool occByNPixelTrk_;
+      bool occByJetEt_;
  
+      double jetEtaMax_;
+      double jetRadius_;
+
       CentralityProvider * centrality_;
 
-      bool applyCuts_;
+      bool applyJetCuts_;
+      double jetEtMin_;
+      double jetEtMax_;
+
+      bool applyTrackCuts_;
       std::string qualityString_;
       double dxyErrMax_;
       double dzErrMax_;
@@ -82,15 +96,22 @@ class RpPbTrackingCorrections : public edm::EDAnalyzer {
 RpPbTrackingCorrections::RpPbTrackingCorrections(const edm::ParameterSet& iConfig):
 vertexSrc_(iConfig.getParameter<edm::InputTag>("vertexSrc")),
 trackSrc_(iConfig.getParameter<edm::InputTag>("trackSrc")),
-tpEffSrc_(iConfig.getParameter<edm::InputTag>("tpEffSrc")),
 tpFakSrc_(iConfig.getParameter<edm::InputTag>("tpFakSrc")),
+tpEffSrc_(iConfig.getParameter<edm::InputTag>("tpEffSrc")),
 associatorMap_(iConfig.getParameter<edm::InputTag>("associatorMap")),
+jetSrc_(iConfig.getParameter<edm::InputTag>("jetSrc")),
 ptBins_(iConfig.getParameter<std::vector<double> >("ptBins")),
 etaBins_(iConfig.getParameter<std::vector<double> >("etaBins")),
 occBins_(iConfig.getParameter<std::vector<double> >("occBins")),
 occByCentrality_(iConfig.getParameter<bool>("occByCentrality")),
 occByNPixelTrk_(iConfig.getParameter<bool>("occByNPixelTrk")),
-applyCuts_(iConfig.getParameter<bool>("applyCuts")),
+occByJetEt_(iConfig.getParameter<bool>("occByJetEt")),
+jetEtaMax_(iConfig.getParameter<double>("jetEtaMax")),
+jetRadius_(iConfig.getParameter<double>("jetRadius")),
+applyJetCuts_(iConfig.getParameter<bool>("applyJetCuts")),
+jetEtMin_(iConfig.getParameter<double>("jetEtMin")),
+jetEtMax_(iConfig.getParameter<double>("jetEtMax")),
+applyTrackCuts_(iConfig.getParameter<bool>("applyTrackCuts")),
 qualityString_(iConfig.getParameter<std::string>("qualityString")),
 dxyErrMax_(iConfig.getParameter<double>("dzErrMax")),
 dzErrMax_(iConfig.getParameter<double>("dzErrMax")),
@@ -110,12 +131,12 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
 {
    using namespace edm;
 
-   // collections of simulated particles 
+   // obtain collections of simulated particles 
    edm::Handle<TrackingParticleCollection>  TPCollectionHeff, TPCollectionHfake;
    iEvent.getByLabel(tpEffSrc_,TPCollectionHeff);
    iEvent.getByLabel(tpFakSrc_,TPCollectionHfake);
 
-   // association map between tracks and simulated particles
+   // obtain association map between tracks and simulated particles
    reco::RecoToSimCollection recSimColl;
    reco::SimToRecoCollection simRecColl;
    edm::Handle<reco::SimToRecoCollection > simtorecoCollectionH;
@@ -125,21 +146,33 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
    iEvent.getByLabel(associatorMap_,recotosimCollectionH);
    recSimColl= *(recotosimCollectionH.product());
 
-   // reconstructed tracks
+   // obtain reconstructed tracks
    Handle<edm::View<reco::Track> > tcol;
    iEvent.getByLabel(trackSrc_, tcol);
 
-   // primary vertices
+   // obtain jets, if we are considering them
+   Handle<std::vector<pat::Jet> > jets;
+   std::vector<const pat::Jet *> sortedJets;
+   if( occByJetEt_  || applyJetCuts_) 
+   {
+      iEvent.getByLabel(jetSrc_, jets);
+      // take only accepted jets and sort them by Et
+      for(unsigned it=0; it<jets->size(); ++it)
+      {
+        const pat::Jet* jet = &((*jets)[it]);
+        if(fabs(jet->eta())>=jetEtaMax_) continue; 
+        sortedJets.push_back(jet);
+      }
+      sortByPtRef(&sortedJets); 
+   }
+  
+   // obtain primary vertices
    Handle<std::vector<reco::Vertex> > vertex;
    iEvent.getByLabel(vertexSrc_, vertex);
   
    // sort the vertcies by number of tracks in descending order
    std::vector<reco::Vertex> vsorted = *vertex;
-   std::sort( vsorted.begin(), vsorted.end(), 
-              []( reco::Vertex a, reco::Vertex b) 
-   {
-      return  a.tracksSize() > b.tracksSize() ? true : false ;
-   });
+   std::sort( vsorted.begin(), vsorted.end(), RpPbTrackingCorrections::vtxSort );
 
    // obtain event centrality
    if (!centrality_) centrality_ = new CentralityProvider(iSetup);
@@ -153,7 +186,6 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
    if( occByCentrality_) occ = centrality_->centralityValue();   
    if( occByNPixelTrk_) occ = centrality_->raw()->NpixelTracks();   
 
-
    // ---------------------
    // loop through reco tracks to fill fake, reco, and secondary histograms
    // ---------------------
@@ -163,7 +195,19 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
      edm::RefToBase<reco::Track> track(tcol, i);
      reco::Track* tr=const_cast<reco::Track*>(track.get());
      // skip tracks that fail cuts, using vertex with most tracks as PV       
-     if( !passesCuts(*tr, vsorted[0]) ) continue;
+     if( !passesTrackCuts(*tr, vsorted[0]) ) continue;
+
+     // if applying jet cuts, only take tracks within jet 
+     // cone of a jet within Et range
+     if ( applyJetCuts_ )
+     {
+        double jetEt = bestJetEt( *tr, sortedJets);
+        if( jetEt < jetEtMin_ || jetEt > jetEtMax_ ) continue;
+     } 
+
+     // get Et of closest jet to track, or 0 if not in a cone, 
+     // if jet occupancy is used
+     if ( occByJetEt_ ) occ = bestJetEt( *tr, sortedJets);
 
      trkCorr3D_["hrec3D"]->Fill(tr->eta(), tr->pt(), occ);
      trkCorr2D_["hrec"]->Fill(tr->eta(), tr->pt());
@@ -196,7 +240,19 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
      TrackingParticle* tp=const_cast<TrackingParticle*>(tpr.get());
          
      if(tp->status() < 0 || tp->charge()==0) continue; //only charged primaries
-     
+ 
+     // if applying jet cuts, only take particles within jet 
+     // cone of a jet within Et range
+     if ( applyJetCuts_ )
+     {
+        double jetEt = bestJetEt( *tp, sortedJets);
+        if( jetEt < jetEtMin_ || jetEt > jetEtMax_ ) continue;
+     }
+
+     // get Et of closest jet to track, or 0 if not in a cone, 
+     // if jet occupancy is used 
+     if ( occByJetEt_ ) occ = bestJetEt( *tp, sortedJets);
+
      trkCorr3D_["hsim3D"]->Fill(tp->eta(),tp->pt(), occ);
      trkCorr2D_["hsim"]->Fill(tp->eta(),tp->pt());
 
@@ -209,7 +265,7 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
        for (std::vector<std::pair<edm::RefToBase<reco::Track>, double> >::const_iterator rtit = rt.begin(); rtit != rt.end(); ++rtit)
        {
          const reco::Track* tmtr = rtit->first.get();
-         if( ! passesCuts(*tmtr, vsorted[0]) ) continue;
+         if( ! passesTrackCuts(*tmtr, vsorted[0]) ) continue;
          nrec++;
        }
      }
@@ -225,9 +281,9 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
 }
 
 bool
-RpPbTrackingCorrections::passesCuts(const reco::Track & track, const reco::Vertex & vertex)
+RpPbTrackingCorrections::passesTrackCuts(const reco::Track & track, const reco::Vertex & vertex)
 {
-   if ( ! applyCuts_ ) return true;
+   if ( ! applyTrackCuts_ ) return true;
 
    math::XYZPoint vtxPoint(0.0,0.0,0.0);
    double vzErr =0.0, vxErr=0.0, vyErr=0.0;
@@ -280,8 +336,48 @@ RpPbTrackingCorrections::initHistos(const edm::Service<TFileService> & fs)
 
 }
 
+bool
+RpPbTrackingCorrections::vtxSort( const reco::Vertex &  a, const reco::Vertex & b )
+{
+  if( a.tracksSize() != b.tracksSize() )
+    return  a.tracksSize() > b.tracksSize() ? true : false ;
+  else
+    return  a.chi2() < b.chi2() ? true : false ;  
+}
 
+double
+RpPbTrackingCorrections::bestJetEt( const reco::Track & tr,
+                         const std::vector<const pat::Jet *> & jets )
+{
+   double drMin = 999.;
+   double et = 0.;
+   for( const auto * jet : jets )
+   {
+     double dr = deltaR(*jet,tr);
+     if( dr < drMin && dr < jetRadius_ )
+     {
+       drMin = dr; et = jet->pt();
+     }
+   }
+   return et;
+}
 
+double
+RpPbTrackingCorrections::bestJetEt( const TrackingParticle & tp,
+                         const std::vector<const pat::Jet *> & jets )
+{
+   double drMin = 999.;
+   double et = 0.;
+   for( const auto * jet : jets )
+   {
+     double dr = deltaR(*jet,tp);
+     if( dr < drMin && dr < jetRadius_ )
+     {
+       drMin = dr; et = jet->pt();
+     }
+   }
+   return et;
+}
 
 void
 RpPbTrackingCorrections::beginJob()
