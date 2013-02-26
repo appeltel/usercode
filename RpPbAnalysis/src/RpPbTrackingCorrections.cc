@@ -82,6 +82,7 @@ class RpPbTrackingCorrections : public edm::EDAnalyzer {
       CentralityProvider * centrality_;
 
       bool applyJetCuts_;
+      bool invertJetCuts_;
       double jetEtMin_;
       double jetEtMax_;
 
@@ -109,6 +110,7 @@ occByJetEt_(iConfig.getParameter<bool>("occByJetEt")),
 jetEtaMax_(iConfig.getParameter<double>("jetEtaMax")),
 jetRadius_(iConfig.getParameter<double>("jetRadius")),
 applyJetCuts_(iConfig.getParameter<bool>("applyJetCuts")),
+invertJetCuts_(iConfig.getParameter<bool>("invertJetCuts")),
 jetEtMin_(iConfig.getParameter<double>("jetEtMin")),
 jetEtMax_(iConfig.getParameter<double>("jetEtMax")),
 applyTrackCuts_(iConfig.getParameter<bool>("applyTrackCuts")),
@@ -200,9 +202,12 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
      // if applying jet cuts, only take tracks within jet 
      // cone of a jet within Et range
      if ( applyJetCuts_ )
-     {
+     {  
+        bool cut = false;
         double jetEt = bestJetEt( *tr, sortedJets);
-        if( jetEt < jetEtMin_ || jetEt > jetEtMax_ ) continue;
+        if( jetEt < jetEtMin_ || jetEt > jetEtMax_ ) cut = true;
+        if( invertJetCuts_ ) cut = !cut;
+        if( cut ) continue;
      } 
 
      // get Et of closest jet to track, or 0 if not in a cone, 
@@ -245,8 +250,11 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
      // cone of a jet within Et range
      if ( applyJetCuts_ )
      {
+        bool cut = false;
         double jetEt = bestJetEt( *tp, sortedJets);
-        if( jetEt < jetEtMin_ || jetEt > jetEtMax_ ) continue;
+        if( jetEt < jetEtMin_ || jetEt > jetEtMax_ ) cut = true;
+        if( invertJetCuts_ ) cut = !cut;
+        if( cut ) continue;
      }
 
      // get Et of closest jet to track, or 0 if not in a cone, 
