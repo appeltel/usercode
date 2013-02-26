@@ -130,6 +130,7 @@ process.jetReco= cms.Sequence(
     process.akPu3PFcorr*
     process.akPu3PFpatJets*
     process.akPu3CaloJets*
+    process.akPu3CaloJetID*
     process.akPu3Calocorr*
     process.akPu3CalopatJets
 )
