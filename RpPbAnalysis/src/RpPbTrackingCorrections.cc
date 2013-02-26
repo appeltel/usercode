@@ -81,6 +81,9 @@ class RpPbTrackingCorrections : public edm::EDAnalyzer {
 
       CentralityProvider * centrality_;
 
+      bool selectSpecies_;
+      std::vector<int> pdgIdList_;
+
       bool applyJetCuts_;
       bool invertJetCuts_;
       double jetEtMin_;
@@ -109,6 +112,8 @@ occByNPixelTrk_(iConfig.getParameter<bool>("occByNPixelTrk")),
 occByJetEt_(iConfig.getParameter<bool>("occByJetEt")),
 jetEtaMax_(iConfig.getParameter<double>("jetEtaMax")),
 jetRadius_(iConfig.getParameter<double>("jetRadius")),
+selectSpecies_(iConfig.getParameter<bool>("selectSpecies")),
+pdgIdList_(iConfig.getParameter<std::vector<int> >("pdgIdList")),
 applyJetCuts_(iConfig.getParameter<bool>("applyJetCuts")),
 invertJetCuts_(iConfig.getParameter<bool>("invertJetCuts")),
 jetEtMin_(iConfig.getParameter<double>("jetEtMin")),
@@ -246,6 +251,17 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
          
      if(tp->status() < 0 || tp->charge()==0) continue; //only charged primaries
  
+     // select certain species for efficiency
+     if( selectSpecies_ ) 
+     { 
+        bool accept = false;
+        for( const int & id : pdgIdList_ )
+        {
+          if( tp->pdgId() == id ) accept = true; 
+        }
+        if(accept == false) continue;  
+     }
+
      // if applying jet cuts, only take particles within jet 
      // cone of a jet within Et range
      if ( applyJetCuts_ )
