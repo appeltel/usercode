@@ -36,5 +36,6 @@ pPbTrkCorr  = cms.EDAnalyzer('RpPbTrackingCorrections',
     qualityString = cms.string("highPurity"),
     dxyErrMax = cms.double(3.0),
     dzErrMax = cms.double(3.0),
-    ptErrMax = cms.double(0.1)
+    ptErrMax = cms.double(0.1),
+    fillGenHistos = cms.bool(False)
 )

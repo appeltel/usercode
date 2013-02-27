@@ -55,11 +55,14 @@ class RpPbTrackingCorrections : public edm::EDAnalyzer {
                         const std::vector<const pat::Jet *> & jets );
       double bestJetEt( const TrackingParticle & tp, 
                         const std::vector<const pat::Jet *> & jets );
+      void fillGenHistosWithTp( const TrackingParticle & tp, double occ );
 
       // ----------member data ---------------------------
 
       std::map<std::string,TH3F*> trkCorr3D_;
       std::map<std::string,TH2F*> trkCorr2D_;
+
+      std::map<std::string,TH3F*> genHist3D_;
 
       edm::InputTag vertexSrc_;
       edm::InputTag trackSrc_;
@@ -95,6 +98,8 @@ class RpPbTrackingCorrections : public edm::EDAnalyzer {
       double dzErrMax_;
       double ptErrMax_;
 
+      bool fillGenHistos_;
+
 };
 
 RpPbTrackingCorrections::RpPbTrackingCorrections(const edm::ParameterSet& iConfig):
@@ -122,7 +127,8 @@ applyTrackCuts_(iConfig.getParameter<bool>("applyTrackCuts")),
 qualityString_(iConfig.getParameter<std::string>("qualityString")),
 dxyErrMax_(iConfig.getParameter<double>("dzErrMax")),
 dzErrMax_(iConfig.getParameter<double>("dzErrMax")),
-ptErrMax_(iConfig.getParameter<double>("ptErrMax"))
+ptErrMax_(iConfig.getParameter<double>("ptErrMax")),
+fillGenHistos_(iConfig.getParameter<bool>("fillGenHistos"))
 {
    edm::Service<TFileService> fs;
    initHistos(fs);
@@ -279,6 +285,7 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
 
      trkCorr3D_["hsim3D"]->Fill(tp->eta(),tp->pt(), occ);
      trkCorr2D_["hsim"]->Fill(tp->eta(),tp->pt());
+     if( fillGenHistos_ ) fillGenHistosWithTp( *tp, occ );
 
      // find number of matched reco tracks that pass cuts
      std::vector<std::pair<edm::RefToBase<reco::Track>, double> > rt;
@@ -357,6 +364,18 @@ RpPbTrackingCorrections::initHistos(const edm::Service<TFileService> & fs)
                            ptBins_.size()-1, &ptBins_[0]);
   }
 
+  std::vector<std::string> genNames3D = { "genPartH","genPartH+","genPartH-",
+                                          "genPartPi","genPartPi+","genPartPi-",
+                                          "genPartK","genPartK+","genPartK-",
+                                          "genPartp","genPartp+","genPartp-" };
+
+  for( auto name : genNames3D )
+  {
+     genHist3D_[name] = fs->make<TH3F>(name.c_str(),";#eta;p_{T};occ var",
+                           etaBins_.size()-1, &etaBins_[0],
+                           ptBins_.size()-1, &ptBins_[0],
+                           occBins_.size()-1, &occBins_[0]);
+  }
 
 }
 
@@ -411,6 +430,33 @@ RpPbTrackingCorrections::beginJob()
 void
 RpPbTrackingCorrections::endJob()
 {
+}
+
+void 
+RpPbTrackingCorrections::fillGenHistosWithTp( const TrackingParticle & tp, double occ )
+{
+  genHist3D_["genPartH"]->Fill( tp.eta(), tp.pt(), occ);
+  if( tp.charge() == 1) genHist3D_["genPartH+"]->Fill( tp.eta(), tp.pt(), occ);
+  if( tp.charge() == -1) genHist3D_["genPartH-"]->Fill( tp.eta(), tp.pt(), occ);
+
+  if( fabs(tp.pdgId()) == 211 )
+  {
+    genHist3D_["genPartPi"]->Fill( tp.eta(), tp.pt(), occ);
+    if( tp.charge() == 1) genHist3D_["genPartPi+"]->Fill( tp.eta(), tp.pt(), occ);
+    if( tp.charge() == -1) genHist3D_["genPartPi-"]->Fill( tp.eta(), tp.pt(), occ);
+  }
+  if( fabs(tp.pdgId()) == 321 )
+  {
+    genHist3D_["genPartK"]->Fill( tp.eta(), tp.pt(), occ);
+    if( tp.charge() == 1) genHist3D_["genPartK+"]->Fill( tp.eta(), tp.pt(), occ);
+    if( tp.charge() == -1) genHist3D_["genPartK-"]->Fill( tp.eta(), tp.pt(), occ);
+  }
+  if( fabs(tp.pdgId()) == 2212 )
+  {
+    genHist3D_["genPartp"]->Fill( tp.eta(), tp.pt(), occ);
+    if( tp.charge() == 1) genHist3D_["genPartp+"]->Fill( tp.eta(), tp.pt(), occ);
+    if( tp.charge() == -1) genHist3D_["genPartp-"]->Fill( tp.eta(), tp.pt(), occ);
+  }
 }
 
 DEFINE_FWK_MODULE(RpPbTrackingCorrections);
