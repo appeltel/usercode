@@ -367,7 +367,9 @@ RpPbTrackingCorrections::initHistos(const edm::Service<TFileService> & fs)
   std::vector<std::string> genNames3D = { "genPartH","genPartH+","genPartH-",
                                           "genPartPi","genPartPi+","genPartPi-",
                                           "genPartK","genPartK+","genPartK-",
-                                          "genPartp","genPartp+","genPartp-" };
+                                          "genPartp","genPartp+","genPartp-",
+                                          "genPartSigma","genPartXi","genPartOmega"
+                                        };
 
   for( auto name : genNames3D )
   {
@@ -457,6 +459,12 @@ RpPbTrackingCorrections::fillGenHistosWithTp( const TrackingParticle & tp, doubl
     if( tp.charge() == 1) genHist3D_["genPartp+"]->Fill( tp.eta(), tp.pt(), occ);
     if( tp.charge() == -1) genHist3D_["genPartp-"]->Fill( tp.eta(), tp.pt(), occ);
   }
+  if( fabs(tp.pdgId()) == 3222 || fabs(tp.pdgId()) == 3112 )
+    genHist3D_["genPartSigma"]->Fill( tp.eta(), tp.pt(), occ);
+  if( fabs(tp.pdgId()) == 3312  )
+    genHist3D_["genPartXi"]->Fill( tp.eta(), tp.pt(), occ);
+  if( fabs(tp.pdgId()) == 3334  )
+    genHist3D_["genPartOmega"]->Fill( tp.eta(), tp.pt(), occ);
 }
 
 DEFINE_FWK_MODULE(RpPbTrackingCorrections);
