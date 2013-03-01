@@ -87,6 +87,9 @@ class RpPbTrackingCorrections : public edm::EDAnalyzer {
       bool selectSpecies_;
       std::vector<int> pdgIdList_;
 
+      bool applyVertexZCut_;
+      double vertexZMax_;
+
       bool applyJetCuts_;
       bool invertJetCuts_;
       double jetEtMin_;
@@ -119,6 +122,8 @@ jetEtaMax_(iConfig.getParameter<double>("jetEtaMax")),
 jetRadius_(iConfig.getParameter<double>("jetRadius")),
 selectSpecies_(iConfig.getParameter<bool>("selectSpecies")),
 pdgIdList_(iConfig.getParameter<std::vector<int> >("pdgIdList")),
+applyVertexZCut_(iConfig.getParameter<bool>("applyVertexZCut")),
+vertexZMax_(iConfig.getParameter<double>("vertexZMax")),
 applyJetCuts_(iConfig.getParameter<bool>("applyJetCuts")),
 invertJetCuts_(iConfig.getParameter<bool>("invertJetCuts")),
 jetEtMin_(iConfig.getParameter<double>("jetEtMin")),
@@ -193,6 +198,12 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
 
    // skip events with no PV, this should not happen
    if( vsorted.size() == 0) return;
+
+   // skip events failing vertex cut
+   if( applyVertexZCut_)
+   {
+     if( fabs(vsorted[0].z()) > vertexZMax_ ) return;
+   }
 
    // determine occupancy variable for event
    double occ = 0.;  
