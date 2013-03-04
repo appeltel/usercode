@@ -24,4 +24,7 @@
 <use name="DataFormats/HepMCCandidate"/>
 <use name="DataFormats/Math"/>
 <use name="DataFormats/Scalers"/>
+<use   name="Geometry/TrackerGeometryBuilder"/>
+<use   name="SimTracker/Records"/>
+<use   name="SimTracker/TrackAssociation"/>
 <flags EDM_PLUGIN="1"/>

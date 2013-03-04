@@ -37,6 +37,12 @@
 #include "DataFormats/PatCandidates/interface/Jet.h"
 #include "RecoJets/JetAlgorithms/interface/JetAlgoHelper.h"
 #include "DataFormats/Math/interface/deltaR.h"
+#include "Geometry/TrackerGeometryBuilder/interface/TrackerGeometry.h"
+#include "DataFormats/SiPixelDetId/interface/PixelSubdetector.h"
+#include "DataFormats/SiPixelDetId/interface/PXBDetId.h"
+#include "DataFormats/SiPixelDetId/interface/PXFDetId.h"
+#include "DataFormats/SiPixelDetId/interface/PixelEndcapName.h"
+#include "Geometry/CommonDetUnit/interface/GeomDetUnit.h"
 
 class RpPbTrackingCorrections : public edm::EDAnalyzer {
    public:
@@ -56,8 +62,12 @@ class RpPbTrackingCorrections : public edm::EDAnalyzer {
       double bestJetEt( const TrackingParticle & tp, 
                         const std::vector<const pat::Jet *> & jets );
       void fillGenHistosWithTp( const TrackingParticle & tp, double occ );
+      int pixelLayersHit( const TrackingParticle & tp );
+      int getLayerId(const PSimHit & simHit);
 
       // ----------member data ---------------------------
+
+      edm::ESHandle<TrackerGeometry> trackerGeo;
 
       std::map<std::string,TH3F*> trkCorr3D_;
       std::map<std::string,TH2F*> trkCorr2D_;
@@ -102,6 +112,10 @@ class RpPbTrackingCorrections : public edm::EDAnalyzer {
       double ptErrMax_;
 
       bool fillGenHistos_;
+
+      enum { BPix1=0, BPix2=1, BPix3=2,
+	     FPix1_neg=3, FPix2_neg=4,
+	     FPix1_pos=5, FPix2_pos=6, nLayers=7};
 
 };
 
@@ -167,6 +181,9 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
    // obtain reconstructed tracks
    Handle<edm::View<reco::Track> > tcol;
    iEvent.getByLabel(trackSrc_, tcol);
+
+   //obtain tracker geometry
+   iSetup.get<TrackerDigiGeometryRecord>().get(trackerGeo);
 
    // obtain jets, if we are considering them
    Handle<std::vector<pat::Jet> > jets;
@@ -298,6 +315,12 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
      trkCorr2D_["hsim"]->Fill(tp->eta(),tp->pt());
      if( fillGenHistos_ ) fillGenHistosWithTp( *tp, occ );
 
+     if( pixelLayersHit(*tp) >= 2) 
+     {
+       trkCorr3D_["hacc3D"]->Fill(tp->eta(),tp->pt(), occ);
+       trkCorr2D_["hacc"]->Fill(tp->eta(),tp->pt());
+     }
+
      // find number of matched reco tracks that pass cuts
      std::vector<std::pair<edm::RefToBase<reco::Track>, double> > rt;
      size_t nrec=0;
@@ -311,15 +334,11 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
          nrec++;
        }
      }
-     
      if(nrec>0) trkCorr3D_["heff3D"]->Fill(tp->eta(),tp->pt(), occ);
      if(nrec>1) trkCorr3D_["hmul3D"]->Fill(tp->eta(),tp->pt(), occ);
      if(nrec>0) trkCorr2D_["heff"]->Fill(tp->eta(),tp->pt());
      if(nrec>1) trkCorr2D_["hmul"]->Fill(tp->eta(),tp->pt());
-
    }
-
-
 }
 
 bool
@@ -355,7 +374,7 @@ RpPbTrackingCorrections::initHistos(const edm::Service<TFileService> & fs)
 {
 
   std::vector<std::string> hNames3D = { "hsim3D", "hrec3D", "hmul3D", "hfak3D",
-                                        "heff3D", "hsec3D" };
+                                        "heff3D", "hsec3D", "hacc3D" };
 
   for( auto name : hNames3D )
   {
@@ -366,7 +385,7 @@ RpPbTrackingCorrections::initHistos(const edm::Service<TFileService> & fs)
   }
 
   std::vector<std::string> hNames2D = { "hsim", "hrec", "hmul", "hfak",
-                                        "heff", "hsec" };
+                                        "heff", "hsec", "hacc" };
 
   for( auto name : hNames2D )
   {
@@ -477,5 +496,81 @@ RpPbTrackingCorrections::fillGenHistosWithTp( const TrackingParticle & tp, doubl
   if( fabs(tp.pdgId()) == 3334  )
     genHist3D_["genPartOmega"]->Fill( tp.eta(), tp.pt(), occ);
 }
+
+
+int
+RpPbTrackingCorrections::pixelLayersHit(const TrackingParticle & tp)
+{
+  std::vector<bool> f(nLayers, false);
+
+  const std::vector<PSimHit> & simHits = tp.trackPSimHit(DetId::Tracker);
+  
+  for(std::vector<PSimHit>::const_iterator simHit = simHits.begin();
+                                      simHit!= simHits.end(); simHit++)
+  {
+    int id = getLayerId(*simHit);
+
+    if(id != -1)
+      f[id] = true;
+  }
+
+  bool canBeTriplet =
+    ( (f[BPix1] && f[BPix2]     && f[BPix3]) ||
+      (f[BPix1] && f[BPix2]     && f[FPix1_pos]) ||
+      (f[BPix1] && f[BPix2]     && f[FPix1_neg]) ||
+      (f[BPix1] && f[FPix1_pos] && f[FPix2_pos]) ||
+      (f[BPix1] && f[FPix1_neg] && f[FPix2_neg]) );
+  if(canBeTriplet) return 3;
+
+  bool canBePair =
+    ( (f[BPix1] && f[BPix2]) ||
+      (f[BPix1] && f[BPix3]) ||
+      (f[BPix2] && f[BPix3]) ||
+      (f[BPix1] && f[FPix1_pos]) ||
+      (f[BPix1] && f[FPix1_neg]) ||
+      (f[BPix1] && f[FPix2_pos]) ||
+      (f[BPix1] && f[FPix2_neg]) ||
+      (f[BPix2] && f[FPix1_pos]) ||
+      (f[BPix2] && f[FPix1_neg]) ||
+      (f[BPix2] && f[FPix2_pos]) ||
+      (f[BPix2] && f[FPix2_neg]) ||
+      (f[FPix2_neg] && f[FPix2_neg]) ||
+      (f[FPix2_pos] && f[FPix2_pos]) );
+  if(canBePair) return 2;
+
+  bool canBeSingle =
+    ( f[BPix1] || f[BPix2] || f[BPix3] ||
+      f[FPix1_pos] || f[FPix1_neg] ||
+      f[FPix2_pos] || f[FPix2_neg] );
+  if(canBeSingle) return 1;
+
+
+  return 0;
+}
+
+// ------------
+int 
+RpPbTrackingCorrections::getLayerId(const PSimHit & simHit)
+{
+  unsigned int id = simHit.detUnitId();
+
+  if(trackerGeo->idToDetUnit(id)->subDetector() ==
+       GeomDetEnumerators::PixelBarrel)
+  {
+    PXBDetId pid(id);
+    return pid.layer() - 1; // 0, 1, 2
+  }
+
+  if(trackerGeo->idToDetUnit(id)->subDetector() ==
+       GeomDetEnumerators::PixelEndcap)
+  {
+    PXFDetId pid(id);
+    return BPix3 + ((pid.side()-1) << 1) + pid.disk(); // 3 -
+  }
+
+  // strip
+  return -1;
+}
+
 
 DEFINE_FWK_MODULE(RpPbTrackingCorrections);
