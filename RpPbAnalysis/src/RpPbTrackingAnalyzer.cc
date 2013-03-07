@@ -156,7 +156,7 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
 
    // determine occupancy variable for event
    double occ = 0.;  
-   if( occByCentrality_) occ = centrality_->centralityValue();   
+   if( occByCentrality_) occ = (double) centrality_->getBin();   
    if( occByNPixelTrk_) occ = centrality_->raw()->NpixelTracks();   
 
    int vcount = 0; 
