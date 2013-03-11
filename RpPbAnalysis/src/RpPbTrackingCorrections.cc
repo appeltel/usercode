@@ -62,6 +62,7 @@ class RpPbTrackingCorrections : public edm::EDAnalyzer {
       double bestJetEt( const TrackingParticle & tp, 
                         const std::vector<const pat::Jet *> & jets );
       void fillGenHistosWithTp( const TrackingParticle & tp, double occ );
+      void fillTrkPerfHistosWithTrk( const reco::Track & track, const reco::Vertex & vertex);
       int pixelLayersHit( const TrackingParticle & tp );
       int getLayerId(const PSimHit & simHit);
 
@@ -71,7 +72,7 @@ class RpPbTrackingCorrections : public edm::EDAnalyzer {
 
       std::map<std::string,TH3F*> trkCorr3D_;
       std::map<std::string,TH2F*> trkCorr2D_;
-
+      std::map<std::string,TH3F*> trkPerf3D_;
       std::map<std::string,TH3F*> genHist3D_;
 
       edm::InputTag vertexSrc_;
@@ -112,6 +113,7 @@ class RpPbTrackingCorrections : public edm::EDAnalyzer {
       double ptErrMax_;
 
       bool fillGenHistos_;
+      bool fillTrkPerfHistos_;
 
       enum { BPix1=0, BPix2=1, BPix3=2,
 	     FPix1_neg=3, FPix2_neg=4,
@@ -147,7 +149,8 @@ qualityString_(iConfig.getParameter<std::string>("qualityString")),
 dxyErrMax_(iConfig.getParameter<double>("dzErrMax")),
 dzErrMax_(iConfig.getParameter<double>("dzErrMax")),
 ptErrMax_(iConfig.getParameter<double>("ptErrMax")),
-fillGenHistos_(iConfig.getParameter<bool>("fillGenHistos"))
+fillGenHistos_(iConfig.getParameter<bool>("fillGenHistos")),
+fillTrkPerfHistos_(iConfig.getParameter<bool>("fillTrkPerfHistos"))
 {
    edm::Service<TFileService> fs;
    initHistos(fs);
@@ -248,6 +251,8 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
         if( invertJetCuts_ ) cut = !cut;
         if( cut ) continue;
      } 
+
+     if( fillTrkPerfHistos_ ) fillTrkPerfHistosWithTrk( *tr, vsorted[0]) ;
 
      // get Et of closest jet to track, or 0 if not in a cone, 
      // if jet occupancy is used
@@ -408,6 +413,42 @@ RpPbTrackingCorrections::initHistos(const edm::Service<TFileService> & fs)
                            ptBins_.size()-1, &ptBins_[0],
                            occBins_.size()-1, &occBins_[0]);
   }
+
+  std::vector<double> dumBins;
+  dumBins.clear(); 
+  for( double i = 0.; i<36.; i += 1.) dumBins.push_back(i);
+  trkPerf3D_["Nhit3D"] = fs->make<TH3F>("trkNhit3D", "Tracks by Number of Valid Hits;N hits",    
+                           etaBins_.size()-1, &etaBins_[0],
+                           ptBins_.size()-1, &ptBins_[0],
+                           dumBins.size()-1, &dumBins[0]);
+  dumBins.clear();  
+  for( double i = -3.15; i<3.151; i += 6.30/50.) dumBins.push_back(i);
+  trkPerf3D_["phi3D"] = fs->make<TH3F>("trkPhi3D", "Track Azimuthal Distribution;#phi",
+                           etaBins_.size()-1, &etaBins_[0],
+                           ptBins_.size()-1, &ptBins_[0],
+                           dumBins.size()-1, &dumBins[0]);
+  dumBins.clear();    
+  for( double i = 0.; i<6.01; i += 6./60.) dumBins.push_back(i);
+  trkPerf3D_["chi23D"] = fs->make<TH3F>("trkChi23D", "Track Normalized #chi^{2};#chi^{2}/n.d.o.f",
+                           etaBins_.size()-1, &etaBins_[0],
+                           ptBins_.size()-1, &ptBins_[0],
+                           dumBins.size()-1, &dumBins[0]);
+  dumBins.clear();
+  for( double i = 0.0; i<0.201; i += 0.2/50.) dumBins.push_back(i);
+  trkPerf3D_["pterr3D"] = fs->make<TH3F>("trkPterr3D", "Track p_{T} error;#delta p_{T} / p_{T}",
+                           etaBins_.size()-1, &etaBins_[0],
+                           ptBins_.size()-1, &ptBins_[0],
+                           dumBins.size()-1, &dumBins[0]);
+  dumBins.clear();
+  for( double i = -8.; i<8.01; i += 16./50.) dumBins.push_back(i);
+  trkPerf3D_["dxyErr3D"] = fs->make<TH3F>("trkDxyErr3D", "Transverse DCA Significance;dxy / #sigma_{dxy}",
+                           etaBins_.size()-1, &etaBins_[0],
+                           ptBins_.size()-1, &ptBins_[0],
+                           dumBins.size()-1, &dumBins[0]);
+  trkPerf3D_["dzErr3D"] = fs->make<TH3F>("trkDzErr3D", "Longitudinal DCA Significance;dz / #sigma_{dz}",
+                           etaBins_.size()-1, &etaBins_[0],
+                           ptBins_.size()-1, &ptBins_[0],
+                           dumBins.size()-1, &dumBins[0]);
 
 }
 
@@ -572,5 +613,26 @@ RpPbTrackingCorrections::getLayerId(const PSimHit & simHit)
   return -1;
 }
 
+void
+RpPbTrackingCorrections::fillTrkPerfHistosWithTrk( const reco::Track & track, const reco::Vertex & vertex )
+{
+   math::XYZPoint vtxPoint(0.0,0.0,0.0);
+   double vzErr =0.0, vxErr=0.0, vyErr=0.0;
+   vtxPoint=vertex.position();
+   vzErr=vertex.zError();
+   vxErr=vertex.xError();
+   vyErr=vertex.yError();
+   double dxy=0.0, dz=0.0, dxysigma=0.0, dzsigma=0.0;
+   dxy = track.dxy(vtxPoint);
+   dz = track.dz(vtxPoint);
+   dxysigma = sqrt(track.d0Error()*track.d0Error()+vxErr*vyErr);
+   dzsigma = sqrt(track.dzError()*track.dzError()+vzErr*vzErr);
+   trkPerf3D_["Nhit3D"]->Fill(track.eta(), track.pt(), track.numberOfValidHits());
+   trkPerf3D_["phi3D"]->Fill(track.eta(), track.pt(), track.phi());
+   trkPerf3D_["dxyErr3D"]->Fill(track.eta(), track.pt(), dxy/dxysigma);
+   trkPerf3D_["dzErr3D"]->Fill(track.eta(), track.pt(), dz/dzsigma);
+   trkPerf3D_["chi23D"]->Fill(track.eta(), track.pt(), track.normalizedChi2());
+   trkPerf3D_["pterr3D"]->Fill(track.eta(), track.pt(), track.ptError() / track.pt() );
+}
 
 DEFINE_FWK_MODULE(RpPbTrackingCorrections);
