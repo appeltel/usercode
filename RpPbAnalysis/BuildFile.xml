@@ -27,4 +27,5 @@
 <use   name="Geometry/TrackerGeometryBuilder"/>
 <use   name="SimTracker/Records"/>
 <use   name="SimTracker/TrackAssociation"/>
+<use   name="SimDataFormats/GeneratorProducts"/>
 <flags EDM_PLUGIN="1"/>

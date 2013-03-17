@@ -31,11 +31,15 @@
 #include <DataFormats/TrackReco/interface/Track.h>
 #include <DataFormats/TrackReco/interface/TrackFwd.h>
 
+#include "SimDataFormats/GeneratorProducts/interface/HepMCProduct.h"
+
+#include "HepMC/HeavyIon.h"
+
 class RpPbTrackingAnalyzer : public edm::EDAnalyzer {
    public:
       explicit RpPbTrackingAnalyzer(const edm::ParameterSet&);
       ~RpPbTrackingAnalyzer();
-
+      static bool vtxSort( const reco::Vertex &  a, const reco::Vertex & b );
 
    private:
       virtual void beginJob() ;
@@ -85,6 +89,7 @@ class RpPbTrackingAnalyzer : public edm::EDAnalyzer {
 
       bool occByCentrality_;
       bool occByNPixelTrk_;
+      bool occByNcoll_;
 
 };
 
@@ -106,7 +111,8 @@ ptBins_(iConfig.getParameter<std::vector<double> >("ptBins")),
 etaBins_(iConfig.getParameter<std::vector<double> >("etaBins")),
 occBins_(iConfig.getParameter<std::vector<double> >("occBins")),
 occByCentrality_(iConfig.getParameter<bool>("occByCentrality")),
-occByNPixelTrk_(iConfig.getParameter<bool>("occByNPixelTrk"))
+occByNPixelTrk_(iConfig.getParameter<bool>("occByNPixelTrk")),
+occByNcoll_(iConfig.getParameter<bool>("occByNcoll"))
 {
    edm::Service<TFileService> fs;
    initHistos(fs);
@@ -131,15 +137,7 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
    std::vector<reco::Vertex> vsorted = *vertex;
    // sort the vertcies by number of tracks in descending order
    // use chi2 as tiebreaker
-   std::sort( vsorted.begin(), vsorted.end(), 
-              []( reco::Vertex a, reco::Vertex b) 
-   {
-      if( a.tracksSize() != b.tracksSize() )
-        return  a.tracksSize() > b.tracksSize() ? true : false ;
-      else
-        return  a.chi2() < b.chi2() ? true : false ;  
-   });
-
+   std::sort( vsorted.begin(), vsorted.end(), RpPbTrackingAnalyzer::vtxSort );
   
    nevt_++;
    events_->Fill(0.5); 
@@ -158,6 +156,14 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
    double occ = 0.;  
    if( occByCentrality_) occ = (double) centrality_->getBin();   
    if( occByNPixelTrk_) occ = centrality_->raw()->NpixelTracks();   
+
+   if ( occByNcoll_)
+   {
+      Handle<edm::HepMCProduct> hepmc;
+      iEvent.getByLabel("generator",hepmc);
+      occ = hepmc->GetEvent()->heavy_ion()->Ncoll();
+      evtPerf_["ncoll"]->Fill( occ );
+   }
 
    int vcount = 0; 
    for( const auto & vi :  vsorted )
@@ -198,7 +204,7 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
 
 
 
-
+   int nTrkSel = 0;
    for( const auto & track : * tcol )
    {
 
@@ -223,7 +229,7 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
          
      if( track.eta() <= etaMax_ && track.eta() >= etaMin_ && track.pt() > ptMin_)
      {
-
+       nTrkSel++;
        trackseta_->Fill(0.5);
        trkPerf_["Nhit"]->Fill(track.numberOfValidHits()); 
        trkPerf_["pt"]->Fill(track.pt()); 
@@ -246,6 +252,7 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
      }
 
    }
+   evtPerf_["NtrkSel"]->Fill(nTrkSel);
 }
 
 
@@ -301,8 +308,10 @@ RpPbTrackingAnalyzer::initHistos(const edm::Service<TFileService> & fs)
 
 
   evtPerf_["Ntrk"] = fs->make<TH1F>("evtNtrk","Tracks per event",100,0,400);
+  evtPerf_["NtrkSel"] = fs->make<TH1F>("evtNtrkSel","Selected Tracks per event",100,0,500);
   evtPerf_["Nvtx"] = fs->make<TH1F>("evtNvtx","Primary Vertices per event",10,0,10);
   evtPerf_["centrality"] = fs->make<TH1F>("centrality","Event centrality bin",100,0,100);
+  evtPerf_["ncoll"] = fs->make<TH1F>("ncoll","Event Ncoll from Generator",50,0,50);
 
   evtPerf_["NvtxLumi"] = fs->make<TH1F>("evtNvtxLumi","Primary Vertices by Lumi",200,0,2000);
   evtPerf_["Lumi"] = fs->make<TH1F>("evtLumi","Events by Lumi",200,0,2000);
@@ -340,7 +349,14 @@ RpPbTrackingAnalyzer::initHistos(const edm::Service<TFileService> & fs)
 }
 
 
-
+bool
+RpPbTrackingAnalyzer::vtxSort( const reco::Vertex &  a, const reco::Vertex & b )
+{
+  if( a.tracksSize() != b.tracksSize() )
+    return  a.tracksSize() > b.tracksSize() ? true : false ;
+  else
+    return  a.chi2() < b.chi2() ? true : false ;  
+}
 
 void
 RpPbTrackingAnalyzer::beginJob()
