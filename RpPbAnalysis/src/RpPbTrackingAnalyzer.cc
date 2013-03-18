@@ -163,6 +163,7 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
       iEvent.getByLabel("generator",hepmc);
       occ = hepmc->GetEvent()->heavy_ion()->Ncoll();
       evtPerf_["ncoll"]->Fill( occ );
+      evtPerf2D_["ncollCent"]->Fill( occ, centrality_->getBin());
    }
 
    int vcount = 0; 
@@ -315,6 +316,9 @@ RpPbTrackingAnalyzer::initHistos(const edm::Service<TFileService> & fs)
 
   evtPerf_["NvtxLumi"] = fs->make<TH1F>("evtNvtxLumi","Primary Vertices by Lumi",200,0,2000);
   evtPerf_["Lumi"] = fs->make<TH1F>("evtLumi","Events by Lumi",200,0,2000);
+
+  evtPerf2D_["ncollCent"] = fs->make<TH2F>("ncollCent","Ncoll versus Centrality",
+                                50,0,50,100,0,100);
 
   vtxPerf_["Ntrk"] = fs->make<TH1F>("vtxNtrk","Tracks per vertex",50,0,200);
   vtxPerf_["x"] = fs->make<TH1F>("vtxX","Vertex x position",1000,-1,1);
