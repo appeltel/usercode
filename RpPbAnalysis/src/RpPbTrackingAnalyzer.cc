@@ -289,6 +289,11 @@ RpPbTrackingAnalyzer::initHistos(const edm::Service<TFileService> & fs)
                            ptBins_.size()-1, &ptBins_[0],
                            occBins_.size()-1, &occBins_[0]); 
 
+  genSpectrum_ = fs->make<TH3F>("genSpectrum",";#eta;p_{T};occ var",
+                           etaBins_.size()-1, &etaBins_[0],
+                           ptBins_.size()-1, &ptBins_[0],
+                           occBins_.size()-1, &occBins_[0]); 
+
   std::vector<double> dumBins;
   dumBins.clear(); 
   for( double i = 0.; i<36.; i += 1.) dumBins.push_back(i);
