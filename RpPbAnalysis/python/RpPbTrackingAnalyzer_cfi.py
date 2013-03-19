@@ -27,5 +27,7 @@ trkAna  = cms.EDAnalyzer('RpPbTrackingAnalyzer',
     qualityString = cms.string("highPurity"),
     dxyErrMax = cms.double(3.0),
     dzErrMax = cms.double(3.0),
-    ptErrMax = cms.double(0.1)
+    ptErrMax = cms.double(0.1),
+    doMC = cms.bool(False),
+    genSrc = cms.InputTag("genParticles")
 )

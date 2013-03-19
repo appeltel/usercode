@@ -32,6 +32,8 @@
 #include <DataFormats/TrackReco/interface/TrackFwd.h>
 
 #include "SimDataFormats/GeneratorProducts/interface/HepMCProduct.h"
+#include <DataFormats/HepMCCandidate/interface/GenParticle.h>
+#include <DataFormats/HepMCCandidate/interface/GenParticleFwd.h>
 
 #include "HepMC/HeavyIon.h"
 
@@ -58,6 +60,7 @@ class RpPbTrackingAnalyzer : public edm::EDAnalyzer {
       std::map<std::string,TH2F*> vtxPerf2D_;
       
       TH3F* trkSpectrum_; 
+      TH3F* genSpectrum_; 
 
       TH1F* events_;
       TH1F* vertices_;
@@ -87,10 +90,13 @@ class RpPbTrackingAnalyzer : public edm::EDAnalyzer {
       std::vector<double> etaBins_;
       std::vector<double> occBins_;
 
+
       bool occByCentrality_;
       bool occByNPixelTrk_;
       bool occByNcoll_;
 
+      bool doMC_;
+      edm::InputTag genSrc_;
 };
 
 RpPbTrackingAnalyzer::RpPbTrackingAnalyzer(const edm::ParameterSet& iConfig):
@@ -112,7 +118,9 @@ etaBins_(iConfig.getParameter<std::vector<double> >("etaBins")),
 occBins_(iConfig.getParameter<std::vector<double> >("occBins")),
 occByCentrality_(iConfig.getParameter<bool>("occByCentrality")),
 occByNPixelTrk_(iConfig.getParameter<bool>("occByNPixelTrk")),
-occByNcoll_(iConfig.getParameter<bool>("occByNcoll"))
+occByNcoll_(iConfig.getParameter<bool>("occByNcoll")),
+doMC_(iConfig.getParameter<bool>("doMC")),
+genSrc_(iConfig.getParameter<edm::InputTag>("genSrc"))
 {
    edm::Service<TFileService> fs;
    initHistos(fs);
@@ -157,13 +165,23 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
    if( occByCentrality_) occ = (double) centrality_->getBin();   
    if( occByNPixelTrk_) occ = centrality_->raw()->NpixelTracks();   
 
-   if ( occByNcoll_)
+   // find event Ncoll if MC, fill gen Histos
+   if ( doMC_)
    {
-      Handle<edm::HepMCProduct> hepmc;
-      iEvent.getByLabel("generator",hepmc);
-      occ = hepmc->GetEvent()->heavy_ion()->Ncoll();
-      evtPerf_["ncoll"]->Fill( occ );
-      evtPerf2D_["ncollCent"]->Fill( occ, centrality_->getBin());
+     Handle<edm::HepMCProduct> hepmc;
+     iEvent.getByLabel("generator",hepmc);
+     int ncoll = hepmc->GetEvent()->heavy_ion()->Ncoll();
+     evtPerf_["ncoll"]->Fill( ncoll );
+     evtPerf2D_["ncollCent"]->Fill( ncoll, centrality_->getBin());
+     if( occByNcoll_) occ = ncoll;
+
+     Handle<reco::GenParticleCollection> gcol;
+     iEvent.getByLabel(genSrc_, gcol);
+     for( const auto & gen : * gcol )
+     {
+       if( gen.status() == 1 && gen.charge() != 0 )
+         genSpectrum_->Fill( gen.eta(), gen.pt(), occ);
+     }
    }
 
    int vcount = 0; 
