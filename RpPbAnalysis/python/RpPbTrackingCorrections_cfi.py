@@ -1,6 +1,9 @@
 import FWCore.ParameterSet.Config as cms
 
+from SimTracker.TrackHistory.TrackClassifier_cff import *
+
 pPbTrkCorr  = cms.EDAnalyzer('RpPbTrackingCorrections',
+    trackClassifier,
     trackSrc = cms.InputTag("generalTracks"),
     vertexSrc = cms.InputTag("offlinePrimaryVerticesWithBS"),
     tpEffSrc = cms.InputTag('mergedtruth','MergedTrackTruth'),
@@ -28,6 +31,8 @@ pPbTrkCorr  = cms.EDAnalyzer('RpPbTrackingCorrections',
     jetRadius = cms.double(0.3),
     selectSpecies = cms.bool(False),
     pdgIdList = cms.vint32(211,-211),
+    selectHeavyFlavorDecays = cms.bool(False),
+    selectNonHeavyFlavorDecays = cms.bool(False),
     applyJetCuts = cms.bool(False),
     applyVertexZCut = cms.bool(False),
     vertexZMax = cms.double(15.),

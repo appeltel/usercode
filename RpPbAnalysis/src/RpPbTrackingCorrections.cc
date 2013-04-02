@@ -43,6 +43,7 @@
 #include "DataFormats/SiPixelDetId/interface/PXFDetId.h"
 #include "DataFormats/SiPixelDetId/interface/PixelEndcapName.h"
 #include "Geometry/CommonDetUnit/interface/GeomDetUnit.h"
+#include "SimTracker/TrackHistory/interface/TrackClassifier.h"
 
 class RpPbTrackingCorrections : public edm::EDAnalyzer {
    public:
@@ -69,6 +70,8 @@ class RpPbTrackingCorrections : public edm::EDAnalyzer {
       // ----------member data ---------------------------
 
       edm::ESHandle<TrackerGeometry> trackerGeo;
+
+      TrackClassifier classifier_;
 
       std::map<std::string,TH3F*> trkCorr3D_;
       std::map<std::string,TH2F*> trkCorr2D_;
@@ -97,6 +100,8 @@ class RpPbTrackingCorrections : public edm::EDAnalyzer {
 
       bool selectSpecies_;
       std::vector<int> pdgIdList_;
+      bool selectHeavyFlavorDecays_;
+      bool selectNonHeavyFlavorDecays_;
 
       bool applyVertexZCut_;
       double vertexZMax_;
@@ -122,6 +127,7 @@ class RpPbTrackingCorrections : public edm::EDAnalyzer {
 };
 
 RpPbTrackingCorrections::RpPbTrackingCorrections(const edm::ParameterSet& iConfig):
+classifier_(iConfig),
 vertexSrc_(iConfig.getParameter<edm::InputTag>("vertexSrc")),
 trackSrc_(iConfig.getParameter<edm::InputTag>("trackSrc")),
 tpFakSrc_(iConfig.getParameter<edm::InputTag>("tpFakSrc")),
@@ -138,6 +144,8 @@ jetEtaMax_(iConfig.getParameter<double>("jetEtaMax")),
 jetRadius_(iConfig.getParameter<double>("jetRadius")),
 selectSpecies_(iConfig.getParameter<bool>("selectSpecies")),
 pdgIdList_(iConfig.getParameter<std::vector<int> >("pdgIdList")),
+selectHeavyFlavorDecays_(iConfig.getParameter<bool>("selectHeavyFlavorDecays")),
+selectNonHeavyFlavorDecays_(iConfig.getParameter<bool>("selectNonHeavyFlavorDecays")),
 applyVertexZCut_(iConfig.getParameter<bool>("applyVertexZCut")),
 vertexZMax_(iConfig.getParameter<double>("vertexZMax")),
 applyJetCuts_(iConfig.getParameter<bool>("applyJetCuts")),
@@ -165,6 +173,9 @@ void
 RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
    using namespace edm;
+
+   // Setup Classifier
+   classifier_.newEvent(iEvent, iSetup);
 
    // obtain collections of simulated particles 
    edm::Handle<TrackingParticleCollection>  TPCollectionHeff, TPCollectionHfake;
@@ -300,6 +311,18 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
         }
         if(accept == false) continue;  
      }
+
+     // select D and B if set
+     if( selectHeavyFlavorDecays_ || selectNonHeavyFlavorDecays_)
+     {
+        bool fromHF = false;
+        classifier_.evaluate(tpr);
+        if( classifier_.is(TrackCategories::BWeakDecay) || 
+            classifier_.is(TrackCategories::CWeakDecay)    ) fromHF = true;
+        if( fromHF && selectNonHeavyFlavorDecays_ ) continue;
+        if( !fromHF && selectHeavyFlavorDecays_ ) continue;
+     }
+    
 
      // if applying jet cuts, only take particles within jet 
      // cone of a jet within Et range
