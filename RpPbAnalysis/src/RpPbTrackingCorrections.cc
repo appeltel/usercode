@@ -20,6 +20,7 @@
 #include <TH1.h>
 #include <TH2.h>
 #include <TH3.h>
+#include <TF1.h>
 
 #include "FWCore/Framework/interface/MakerMacros.h"
 #include "FWCore/ServiceRegistry/interface/Service.h"
@@ -62,8 +63,8 @@ class RpPbTrackingCorrections : public edm::EDAnalyzer {
                         const std::vector<const pat::Jet *> & jets );
       double bestJetEt( const TrackingParticle & tp, 
                         const std::vector<const pat::Jet *> & jets );
-      void fillGenHistosWithTp( const TrackingParticle & tp, double occ );
-      void fillTrkPerfHistosWithTrk( const reco::Track & track, const reco::Vertex & vertex);
+      void fillGenHistosWithTp( const TrackingParticle & tp, double occ, double w );
+      void fillTrkPerfHistosWithTrk( const reco::Track & track, const reco::Vertex & vertex, double w);
       int pixelLayersHit( const TrackingParticle & tp );
       int getLayerId(const PSimHit & simHit);
 
@@ -77,6 +78,9 @@ class RpPbTrackingCorrections : public edm::EDAnalyzer {
       std::map<std::string,TH2F*> trkCorr2D_;
       std::map<std::string,TH3F*> trkPerf3D_;
       std::map<std::string,TH3F*> genHist3D_;
+      TH1F * vtxZ_;
+      TH1F * leadJetEt_;
+      TF1 * vtxWeightFunc_;
 
       edm::InputTag vertexSrc_;
       edm::InputTag trackSrc_;
@@ -89,10 +93,15 @@ class RpPbTrackingCorrections : public edm::EDAnalyzer {
       std::vector<double> etaBins_;
       std::vector<double> occBins_;
 
+      
+      std::vector<double> vtxWeightParameters_;
+      bool doVtxReweighting_;
+
       bool occByCentrality_;
       bool occByNPixelTrk_;
       bool occByJetEt_;
- 
+      bool occByLeadingJetEt_;
+
       double jetEtaMax_;
       double jetRadius_;
 
@@ -137,9 +146,12 @@ jetSrc_(iConfig.getParameter<edm::InputTag>("jetSrc")),
 ptBins_(iConfig.getParameter<std::vector<double> >("ptBins")),
 etaBins_(iConfig.getParameter<std::vector<double> >("etaBins")),
 occBins_(iConfig.getParameter<std::vector<double> >("occBins")),
+vtxWeightParameters_(iConfig.getParameter<std::vector<double> >("vtxWeightParameters")),
+doVtxReweighting_(iConfig.getParameter<bool>("doVtxReweighting")),
 occByCentrality_(iConfig.getParameter<bool>("occByCentrality")),
 occByNPixelTrk_(iConfig.getParameter<bool>("occByNPixelTrk")),
 occByJetEt_(iConfig.getParameter<bool>("occByJetEt")),
+occByLeadingJetEt_(iConfig.getParameter<bool>("occByLeadingJetEt")),
 jetEtaMax_(iConfig.getParameter<double>("jetEtaMax")),
 jetRadius_(iConfig.getParameter<double>("jetRadius")),
 selectSpecies_(iConfig.getParameter<bool>("selectSpecies")),
@@ -163,10 +175,19 @@ fillTrkPerfHistos_(iConfig.getParameter<bool>("fillTrkPerfHistos"))
    edm::Service<TFileService> fs;
    initHistos(fs);
    centrality_ = 0;
+   vtxWeightFunc_ = new TF1("vtxWeight","gaus(0)/gaus(3)",-50.,50.);
+   // vtxWeightParameters should have size 6,
+   // one really should throw an error if not
+   if( (int)vtxWeightParameters_.size() == 6 )
+   {
+     for( unsigned int i=0;i<vtxWeightParameters_.size(); i++)
+       vtxWeightFunc_->SetParameter(i,vtxWeightParameters_[i]);
+   }
 }
 
 RpPbTrackingCorrections::~RpPbTrackingCorrections()
 {
+   delete vtxWeightFunc_;
 }
 
 void
@@ -202,7 +223,7 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
    // obtain jets, if we are considering them
    Handle<std::vector<pat::Jet> > jets;
    std::vector<const pat::Jet *> sortedJets;
-   if( occByJetEt_  || applyJetCuts_) 
+   if( occByJetEt_  || applyJetCuts_ || occByLeadingJetEt_) 
    {
       iEvent.getByLabel(jetSrc_, jets);
       // take only accepted jets and sort them by Et
@@ -236,11 +257,19 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
      if( fabs(vsorted[0].z()) > vertexZMax_ ) return;
    }
 
+   // determine vertex reweighting factor
+   double w = 1.0;
+   if ( doVtxReweighting_ )
+     w *= vtxWeightFunc_->Eval(vsorted[0].z());
+
+   vtxZ_->Fill(vsorted[0].z(),w);
+
    // determine occupancy variable for event
    double occ = 0.;  
    if( occByCentrality_) occ = (double) centrality_->getBin(); 
    if( occByNPixelTrk_) occ = centrality_->raw()->NpixelTracks();   
-
+   if( occByLeadingJetEt_ ) occ = sortedJets.size() > 0 ? sortedJets[0]->pt() : 0;
+   leadJetEt_->Fill( sortedJets.size() > 0 ? sortedJets[0]->pt() : 0.,w );
    // ---------------------
    // loop through reco tracks to fill fake, reco, and secondary histograms
    // ---------------------
@@ -263,14 +292,14 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
         if( cut ) continue;
      } 
 
-     if( fillTrkPerfHistos_ ) fillTrkPerfHistosWithTrk( *tr, vsorted[0]) ;
+     if( fillTrkPerfHistos_ ) fillTrkPerfHistosWithTrk( *tr, vsorted[0], w) ;
 
      // get Et of closest jet to track, or 0 if not in a cone, 
      // if jet occupancy is used
      if ( occByJetEt_ ) occ = bestJetEt( *tr, sortedJets);
 
-     trkCorr3D_["hrec3D"]->Fill(tr->eta(), tr->pt(), occ);
-     trkCorr2D_["hrec"]->Fill(tr->eta(), tr->pt());
+     trkCorr3D_["hrec3D"]->Fill(tr->eta(), tr->pt(), occ,w);
+     trkCorr2D_["hrec"]->Fill(tr->eta(), tr->pt(), w);
 
      // look for match to simulated particle, use first match if it exists
      std::vector<std::pair<TrackingParticleRef, double> > tp;
@@ -279,13 +308,13 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
      {
        tp = recSimColl[track];
        mtp = tp.begin()->first.get();  
-       if( mtp->status() < 0) trkCorr3D_["hsec3D"]->Fill(tr->eta(), tr->pt(), occ);     
-       if( mtp->status() < 0) trkCorr2D_["hsec"]->Fill(tr->eta(), tr->pt());     
+       if( mtp->status() < 0) trkCorr3D_["hsec3D"]->Fill(tr->eta(), tr->pt(), occ, w);     
+       if( mtp->status() < 0) trkCorr2D_["hsec"]->Fill(tr->eta(), tr->pt(), w);     
      }
      else
      {
-       trkCorr3D_["hfak3D"]->Fill(tr->eta(), tr->pt(), occ);
-       trkCorr2D_["hfak"]->Fill(tr->eta(), tr->pt());
+       trkCorr3D_["hfak3D"]->Fill(tr->eta(), tr->pt(), occ, w);
+       trkCorr2D_["hfak"]->Fill(tr->eta(), tr->pt(), w);
      }
 
    }
@@ -339,14 +368,14 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
      // if jet occupancy is used 
      if ( occByJetEt_ ) occ = bestJetEt( *tp, sortedJets);
 
-     trkCorr3D_["hsim3D"]->Fill(tp->eta(),tp->pt(), occ);
-     trkCorr2D_["hsim"]->Fill(tp->eta(),tp->pt());
-     if( fillGenHistos_ ) fillGenHistosWithTp( *tp, occ );
+     trkCorr3D_["hsim3D"]->Fill(tp->eta(),tp->pt(), occ, w);
+     trkCorr2D_["hsim"]->Fill(tp->eta(),tp->pt(), w);
+     if( fillGenHistos_ ) fillGenHistosWithTp( *tp, occ, w );
 
      if( pixelLayersHit(*tp) >= 2) 
      {
-       trkCorr3D_["hacc3D"]->Fill(tp->eta(),tp->pt(), occ);
-       trkCorr2D_["hacc"]->Fill(tp->eta(),tp->pt());
+       trkCorr3D_["hacc3D"]->Fill(tp->eta(),tp->pt(), occ, w);
+       trkCorr2D_["hacc"]->Fill(tp->eta(),tp->pt(), w);
      }
 
      // find number of matched reco tracks that pass cuts
@@ -362,10 +391,10 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
          nrec++;
        }
      }
-     if(nrec>0) trkCorr3D_["heff3D"]->Fill(tp->eta(),tp->pt(), occ);
-     if(nrec>1) trkCorr3D_["hmul3D"]->Fill(tp->eta(),tp->pt(), occ);
-     if(nrec>0) trkCorr2D_["heff"]->Fill(tp->eta(),tp->pt());
-     if(nrec>1) trkCorr2D_["hmul"]->Fill(tp->eta(),tp->pt());
+     if(nrec>0) trkCorr3D_["heff3D"]->Fill(tp->eta(),tp->pt(), occ, w);
+     if(nrec>1) trkCorr3D_["hmul3D"]->Fill(tp->eta(),tp->pt(), occ, w);
+     if(nrec>0) trkCorr2D_["heff"]->Fill(tp->eta(),tp->pt(), w);
+     if(nrec>1) trkCorr2D_["hmul"]->Fill(tp->eta(),tp->pt(), w);
    }
 }
 
@@ -473,6 +502,8 @@ RpPbTrackingCorrections::initHistos(const edm::Service<TFileService> & fs)
                            ptBins_.size()-1, &ptBins_[0],
                            dumBins.size()-1, &dumBins[0]);
 
+  vtxZ_ = fs->make<TH1F>("vtxZ","Vertex z position",100,-30,30);
+  leadJetEt_ = fs->make<TH1F>("leadJetEt","Vertex z position",1000,0,1000);
 }
 
 bool
@@ -529,36 +560,36 @@ RpPbTrackingCorrections::endJob()
 }
 
 void 
-RpPbTrackingCorrections::fillGenHistosWithTp( const TrackingParticle & tp, double occ )
+RpPbTrackingCorrections::fillGenHistosWithTp( const TrackingParticle & tp, double occ, double w )
 {
-  genHist3D_["genPartH"]->Fill( tp.eta(), tp.pt(), occ);
-  if( tp.charge() == 1) genHist3D_["genPartH+"]->Fill( tp.eta(), tp.pt(), occ);
-  if( tp.charge() == -1) genHist3D_["genPartH-"]->Fill( tp.eta(), tp.pt(), occ);
+  genHist3D_["genPartH"]->Fill( tp.eta(), tp.pt(), occ, w);
+  if( tp.charge() == 1) genHist3D_["genPartH+"]->Fill( tp.eta(), tp.pt(), occ, w);
+  if( tp.charge() == -1) genHist3D_["genPartH-"]->Fill( tp.eta(), tp.pt(), occ, w);
 
   if( fabs(tp.pdgId()) == 211 )
   {
-    genHist3D_["genPartPi"]->Fill( tp.eta(), tp.pt(), occ);
-    if( tp.charge() == 1) genHist3D_["genPartPi+"]->Fill( tp.eta(), tp.pt(), occ);
-    if( tp.charge() == -1) genHist3D_["genPartPi-"]->Fill( tp.eta(), tp.pt(), occ);
+    genHist3D_["genPartPi"]->Fill( tp.eta(), tp.pt(), occ, w);
+    if( tp.charge() == 1) genHist3D_["genPartPi+"]->Fill( tp.eta(), tp.pt(), occ, w);
+    if( tp.charge() == -1) genHist3D_["genPartPi-"]->Fill( tp.eta(), tp.pt(), occ, w);
   }
   if( fabs(tp.pdgId()) == 321 )
   {
     genHist3D_["genPartK"]->Fill( tp.eta(), tp.pt(), occ);
-    if( tp.charge() == 1) genHist3D_["genPartK+"]->Fill( tp.eta(), tp.pt(), occ);
-    if( tp.charge() == -1) genHist3D_["genPartK-"]->Fill( tp.eta(), tp.pt(), occ);
+    if( tp.charge() == 1) genHist3D_["genPartK+"]->Fill( tp.eta(), tp.pt(), occ, w);
+    if( tp.charge() == -1) genHist3D_["genPartK-"]->Fill( tp.eta(), tp.pt(), occ, w);
   }
   if( fabs(tp.pdgId()) == 2212 )
   {
     genHist3D_["genPartp"]->Fill( tp.eta(), tp.pt(), occ);
-    if( tp.charge() == 1) genHist3D_["genPartp+"]->Fill( tp.eta(), tp.pt(), occ);
-    if( tp.charge() == -1) genHist3D_["genPartp-"]->Fill( tp.eta(), tp.pt(), occ);
+    if( tp.charge() == 1) genHist3D_["genPartp+"]->Fill( tp.eta(), tp.pt(), occ, w);
+    if( tp.charge() == -1) genHist3D_["genPartp-"]->Fill( tp.eta(), tp.pt(), occ, w);
   }
   if( fabs(tp.pdgId()) == 3222 || fabs(tp.pdgId()) == 3112 )
-    genHist3D_["genPartSigma"]->Fill( tp.eta(), tp.pt(), occ);
+    genHist3D_["genPartSigma"]->Fill( tp.eta(), tp.pt(), occ, w);
   if( fabs(tp.pdgId()) == 3312  )
-    genHist3D_["genPartXi"]->Fill( tp.eta(), tp.pt(), occ);
+    genHist3D_["genPartXi"]->Fill( tp.eta(), tp.pt(), occ, w);
   if( fabs(tp.pdgId()) == 3334  )
-    genHist3D_["genPartOmega"]->Fill( tp.eta(), tp.pt(), occ);
+    genHist3D_["genPartOmega"]->Fill( tp.eta(), tp.pt(), occ, w);
 }
 
 
@@ -637,7 +668,7 @@ RpPbTrackingCorrections::getLayerId(const PSimHit & simHit)
 }
 
 void
-RpPbTrackingCorrections::fillTrkPerfHistosWithTrk( const reco::Track & track, const reco::Vertex & vertex )
+RpPbTrackingCorrections::fillTrkPerfHistosWithTrk( const reco::Track & track, const reco::Vertex & vertex, double w )
 {
    math::XYZPoint vtxPoint(0.0,0.0,0.0);
    double vzErr =0.0, vxErr=0.0, vyErr=0.0;
@@ -650,12 +681,12 @@ RpPbTrackingCorrections::fillTrkPerfHistosWithTrk( const reco::Track & track, co
    dz = track.dz(vtxPoint);
    dxysigma = sqrt(track.d0Error()*track.d0Error()+vxErr*vyErr);
    dzsigma = sqrt(track.dzError()*track.dzError()+vzErr*vzErr);
-   trkPerf3D_["Nhit3D"]->Fill(track.eta(), track.pt(), track.numberOfValidHits());
-   trkPerf3D_["phi3D"]->Fill(track.eta(), track.pt(), track.phi());
-   trkPerf3D_["dxyErr3D"]->Fill(track.eta(), track.pt(), dxy/dxysigma);
-   trkPerf3D_["dzErr3D"]->Fill(track.eta(), track.pt(), dz/dzsigma);
-   trkPerf3D_["chi23D"]->Fill(track.eta(), track.pt(), track.normalizedChi2());
-   trkPerf3D_["pterr3D"]->Fill(track.eta(), track.pt(), track.ptError() / track.pt() );
+   trkPerf3D_["Nhit3D"]->Fill(track.eta(), track.pt(), track.numberOfValidHits(), w);
+   trkPerf3D_["phi3D"]->Fill(track.eta(), track.pt(), track.phi(),w );
+   trkPerf3D_["dxyErr3D"]->Fill(track.eta(), track.pt(), dxy/dxysigma, w);
+   trkPerf3D_["dzErr3D"]->Fill(track.eta(), track.pt(), dz/dzsigma, w);
+   trkPerf3D_["chi23D"]->Fill(track.eta(), track.pt(), track.normalizedChi2(), w);
+   trkPerf3D_["pterr3D"]->Fill(track.eta(), track.pt(), track.ptError() / track.pt(), w );
 }
 
 DEFINE_FWK_MODULE(RpPbTrackingCorrections);
