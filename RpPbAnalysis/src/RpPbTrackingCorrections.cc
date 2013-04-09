@@ -195,8 +195,9 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
 {
    using namespace edm;
 
-   // Setup Classifier
-   classifier_.newEvent(iEvent, iSetup);
+   // Setup Classifier if it is being used
+   if( selectHeavyFlavorDecays_ || selectNonHeavyFlavorDecays_)
+     classifier_.newEvent(iEvent, iSetup);
 
    // obtain collections of simulated particles 
    edm::Handle<TrackingParticleCollection>  TPCollectionHeff, TPCollectionHfake;
@@ -268,8 +269,10 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
    double occ = 0.;  
    if( occByCentrality_) occ = (double) centrality_->getBin(); 
    if( occByNPixelTrk_) occ = centrality_->raw()->NpixelTracks();   
-   if( occByLeadingJetEt_ ) occ = sortedJets.size() > 0 ? sortedJets[0]->pt() : 0;
-   leadJetEt_->Fill( sortedJets.size() > 0 ? sortedJets[0]->pt() : 0.,w );
+   double leadJetEt = 0.;
+   if ( ! sortedJets.empty() ) leadJetEt = sortedJets[0]->pt();
+   if( occByLeadingJetEt_ ) occ = leadJetEt;
+   leadJetEt_->Fill( leadJetEt ,w );
    // ---------------------
    // loop through reco tracks to fill fake, reco, and secondary histograms
    // ---------------------
