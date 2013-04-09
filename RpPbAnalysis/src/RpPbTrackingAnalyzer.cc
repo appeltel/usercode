@@ -35,6 +35,8 @@
 #include <DataFormats/HepMCCandidate/interface/GenParticle.h>
 #include <DataFormats/HepMCCandidate/interface/GenParticleFwd.h>
 
+#include "DataFormats/PatCandidates/interface/Jet.h"
+#include "RecoJets/JetAlgorithms/interface/JetAlgoHelper.h"
 #include "HepMC/HeavyIon.h"
 
 class RpPbTrackingAnalyzer : public edm::EDAnalyzer {
@@ -74,9 +76,11 @@ class RpPbTrackingAnalyzer : public edm::EDAnalyzer {
 
       edm::InputTag vertexSrc_;
       edm::InputTag trackSrc_;
+      edm::InputTag jetSrc_;
       double etaMin_;
       double etaMax_;
       double ptMin_;
+      double vertexZMax_;
  
       CentralityProvider * centrality_;
 
@@ -94,6 +98,8 @@ class RpPbTrackingAnalyzer : public edm::EDAnalyzer {
       bool occByCentrality_;
       bool occByNPixelTrk_;
       bool occByNcoll_;
+      bool occByLeadingJetEt_;
+      double jetEtaMax_;
 
       bool doMC_;
       edm::InputTag genSrc_;
@@ -105,9 +111,11 @@ ntrack_(0),
 nvertex_(0),
 vertexSrc_(iConfig.getParameter<edm::InputTag>("vertexSrc")),
 trackSrc_(iConfig.getParameter<edm::InputTag>("trackSrc")),
+jetSrc_(iConfig.getParameter<edm::InputTag>("jetSrc")),
 etaMin_(iConfig.getParameter<double>("etaMin")),
 etaMax_(iConfig.getParameter<double>("etaMax")),
 ptMin_(iConfig.getParameter<double>("ptMin")),
+vertexZMax_(iConfig.getParameter<double>("vertexZMax")),
 applyCuts_(iConfig.getParameter<bool>("applyCuts")),
 qualityString_(iConfig.getParameter<std::string>("qualityString")),
 dxyErrMax_(iConfig.getParameter<double>("dzErrMax")),
@@ -119,6 +127,8 @@ occBins_(iConfig.getParameter<std::vector<double> >("occBins")),
 occByCentrality_(iConfig.getParameter<bool>("occByCentrality")),
 occByNPixelTrk_(iConfig.getParameter<bool>("occByNPixelTrk")),
 occByNcoll_(iConfig.getParameter<bool>("occByNcoll")),
+occByLeadingJetEt_(iConfig.getParameter<bool>("occByLeadingJetEt")),
+jetEtaMax_(iConfig.getParameter<double>("jetEtaMax")),
 doMC_(iConfig.getParameter<bool>("doMC")),
 genSrc_(iConfig.getParameter<edm::InputTag>("genSrc"))
 {
@@ -146,7 +156,28 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
    // sort the vertcies by number of tracks in descending order
    // use chi2 as tiebreaker
    std::sort( vsorted.begin(), vsorted.end(), RpPbTrackingAnalyzer::vtxSort );
-  
+ 
+   // skip events with no PV, this should not happen
+   if( vsorted.size() == 0) return;
+   // skip events failing vertex cut
+   if( fabs(vsorted[0].z()) > vertexZMax_ ) return;
+ 
+   // obtain jets, if we are considering them
+   Handle<std::vector<pat::Jet> > jets;
+   std::vector<const pat::Jet *> sortedJets;
+   if( occByLeadingJetEt_) 
+   {
+      iEvent.getByLabel(jetSrc_, jets);
+      // take only accepted jets and sort them by Et
+      for(unsigned it=0; it<jets->size(); ++it)
+      {
+        const pat::Jet* jet = &((*jets)[it]);
+        if(fabs(jet->eta())>=jetEtaMax_) continue; 
+        sortedJets.push_back(jet);
+      }
+      sortByPtRef(&sortedJets); 
+   }
+
    nevt_++;
    events_->Fill(0.5); 
    evtPerf_["Nvtx"]->Fill(vsorted.size());
@@ -165,14 +196,22 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
    if( occByCentrality_) occ = (double) centrality_->getBin();   
    if( occByNPixelTrk_) occ = centrality_->raw()->NpixelTracks();   
 
+   double leadJetEt = 0.;
+   if ( ! sortedJets.empty() ) leadJetEt = sortedJets[0]->pt();
+   if( occByLeadingJetEt_ ) occ = leadJetEt;
+
    // find event Ncoll if MC, fill gen Histos
    if ( doMC_)
    {
      Handle<edm::HepMCProduct> hepmc;
      iEvent.getByLabel("generator",hepmc);
      int ncoll = hepmc->GetEvent()->heavy_ion()->Ncoll();
+     float b = hepmc->GetEvent()->heavy_ion()->impact_parameter();
      evtPerf_["ncoll"]->Fill( ncoll );
+     evtPerf_["b"]->Fill( b );
      evtPerf2D_["ncollCent"]->Fill( ncoll, centrality_->getBin());
+     evtPerf2D_["bCent"]->Fill( b, centrality_->getBin());
+     evtPerf2D_["bncoll"]->Fill( b, ncoll);
      if( occByNcoll_) occ = ncoll;
 
      Handle<reco::GenParticleCollection> gcol;
@@ -336,12 +375,17 @@ RpPbTrackingAnalyzer::initHistos(const edm::Service<TFileService> & fs)
   evtPerf_["Nvtx"] = fs->make<TH1F>("evtNvtx","Primary Vertices per event",10,0,10);
   evtPerf_["centrality"] = fs->make<TH1F>("centrality","Event centrality bin",100,0,100);
   evtPerf_["ncoll"] = fs->make<TH1F>("ncoll","Event Ncoll from Generator",50,0,50);
+  evtPerf_["b"] = fs->make<TH1F>("b","Impact Parameter from Generator",100,0,20);
 
   evtPerf_["NvtxLumi"] = fs->make<TH1F>("evtNvtxLumi","Primary Vertices by Lumi",200,0,2000);
   evtPerf_["Lumi"] = fs->make<TH1F>("evtLumi","Events by Lumi",200,0,2000);
 
   evtPerf2D_["ncollCent"] = fs->make<TH2F>("ncollCent","Ncoll versus Centrality",
                                 50,0,50,100,0,100);
+  evtPerf2D_["bCent"] = fs->make<TH2F>("bCent","Impact Parameter versus Centrality",
+                                100,0,20,100,0,100);
+  evtPerf2D_["bncoll"] = fs->make<TH2F>("bncoll","Impact Parameter versus Ncoll",
+                                100,0,20,50,0,50);
 
   vtxPerf_["Ntrk"] = fs->make<TH1F>("vtxNtrk","Tracks per vertex",50,0,200);
   vtxPerf_["x"] = fs->make<TH1F>("vtxX","Vertex x position",1000,-1,1);
