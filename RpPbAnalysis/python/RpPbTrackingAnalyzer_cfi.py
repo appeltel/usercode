@@ -33,5 +33,7 @@ trkAna  = cms.EDAnalyzer('RpPbTrackingAnalyzer',
     dzErrMax = cms.double(3.0),
     ptErrMax = cms.double(0.1),
     doMC = cms.bool(False),
-    genSrc = cms.InputTag("genParticles")
+    genSrc = cms.InputTag("genParticles"),
+    doMCbyTP = cms.bool(False),
+    tpSrc = cms.InputTag('mergedtruth','MergedTrackTruth')
 )

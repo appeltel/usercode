@@ -34,7 +34,8 @@
 #include "SimDataFormats/GeneratorProducts/interface/HepMCProduct.h"
 #include <DataFormats/HepMCCandidate/interface/GenParticle.h>
 #include <DataFormats/HepMCCandidate/interface/GenParticleFwd.h>
-
+#include "SimDataFormats/TrackingAnalysis/interface/TrackingParticle.h"
+#include "SimDataFormats/TrackingAnalysis/interface/TrackingParticleFwd.h"
 #include "DataFormats/PatCandidates/interface/Jet.h"
 #include "RecoJets/JetAlgorithms/interface/JetAlgoHelper.h"
 #include "HepMC/HeavyIon.h"
@@ -103,6 +104,8 @@ class RpPbTrackingAnalyzer : public edm::EDAnalyzer {
 
       bool doMC_;
       edm::InputTag genSrc_;
+      bool doMCbyTP_;
+      edm::InputTag tpSrc_;
 };
 
 RpPbTrackingAnalyzer::RpPbTrackingAnalyzer(const edm::ParameterSet& iConfig):
@@ -130,7 +133,9 @@ occByNcoll_(iConfig.getParameter<bool>("occByNcoll")),
 occByLeadingJetEt_(iConfig.getParameter<bool>("occByLeadingJetEt")),
 jetEtaMax_(iConfig.getParameter<double>("jetEtaMax")),
 doMC_(iConfig.getParameter<bool>("doMC")),
-genSrc_(iConfig.getParameter<edm::InputTag>("genSrc"))
+genSrc_(iConfig.getParameter<edm::InputTag>("genSrc")),
+doMCbyTP_(iConfig.getParameter<bool>("doMCbyTP")),
+tpSrc_(iConfig.getParameter<edm::InputTag>("tpSrc"))
 {
    edm::Service<TFileService> fs;
    initHistos(fs);
@@ -220,6 +225,20 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
      {
        if( gen.status() == 1 && gen.charge() != 0 )
          genSpectrum_->Fill( gen.eta(), gen.pt(), occ);
+     }
+   }
+
+   if( doMCbyTP_ )
+   {
+     edm::Handle<TrackingParticleCollection>  TPCollection;
+     iEvent.getByLabel(tpSrc_,TPCollection);
+     for(TrackingParticleCollection::size_type i=0; i<TPCollection->size(); i++) 
+     {      
+       TrackingParticleRef tpr(TPCollection, i);
+       TrackingParticle* tp=const_cast<TrackingParticle*>(tpr.get());
+         
+       if(tp->status() < 0 || tp->charge()==0) continue; 
+       genSpectrum_->Fill( tp->eta(), tp->pt(), occ);
      }
    }
 
