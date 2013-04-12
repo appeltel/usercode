@@ -100,3 +100,9 @@ trkAna_HIN12017_MC = trkAna_HIN12017.clone(
     doMC = cms.bool(True),
     genSrc = cms.InputTag("genParticles")
 )
+
+trkAna_HIN12017_TP = trkAna_HIN12017.clone(
+    doMC = cms.bool(True),
+    genSrc = cms.InputTag("genParticles"),
+    doMCbyTP = cms.bool(True)
+)
