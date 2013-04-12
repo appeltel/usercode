@@ -1,5 +1,7 @@
 import FWCore.ParameterSet.Config as cms
 
+from SimGeneral.HepPDTESSource.pythiapdt_cfi import *
+
 trkAna  = cms.EDAnalyzer('RpPbTrackingAnalyzer',
    trackSrc = cms.InputTag("generalTracks"),
    vertexSrc = cms.InputTag("offlinePrimaryVerticesWithBS"),
