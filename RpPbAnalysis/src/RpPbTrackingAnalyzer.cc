@@ -36,6 +36,8 @@
 #include <DataFormats/HepMCCandidate/interface/GenParticleFwd.h>
 #include "SimDataFormats/TrackingAnalysis/interface/TrackingParticle.h"
 #include "SimDataFormats/TrackingAnalysis/interface/TrackingParticleFwd.h"
+#include "HepPDT/ParticleID.hh"
+#include "SimGeneral/HepPDTRecord/interface/ParticleDataTable.h"
 #include "DataFormats/PatCandidates/interface/Jet.h"
 #include "RecoJets/JetAlgorithms/interface/JetAlgoHelper.h"
 #include "HepMC/HeavyIon.h"
@@ -205,7 +207,11 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
    if ( ! sortedJets.empty() ) leadJetEt = sortedJets[0]->pt();
    if( occByLeadingJetEt_ ) occ = leadJetEt;
 
+   // is this a Double-Sided Event?
+   bool isDS = false;
+
    // find event Ncoll if MC, fill gen Histos
+   // also determine if this is a DS event
    if ( doMC_)
    {
      Handle<edm::HepMCProduct> hepmc;
@@ -219,15 +225,37 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
      evtPerf2D_["bncoll"]->Fill( b, ncoll);
      if( occByNcoll_) occ = ncoll;
 
+     bool posDS = false; bool negDS = false;
+     edm::ESHandle<ParticleDataTable> particleDataTable_;
+     iSetup.getData(particleDataTable_);
+
      Handle<reco::GenParticleCollection> gcol;
      iEvent.getByLabel(genSrc_, gcol);
      for( const auto & gen : * gcol )
      {
-       if( gen.status() == 1 && gen.charge() != 0 )
+       // see if genpartice counts for DS
+       HepPDT::ParticleID particleID(gen.pdgId());
+       if (particleID.isValid())
+       {
+         ParticleData const * particleData = particleDataTable_->particle(particleID);
+         if (particleData)
+         {
+           if ( particleDataTable_->particle(particleID)->lifetime() > 1e-18 )
+           {
+             if( gen.eta() > 3.0 && gen.eta() < 5.0 ) posDS = true;
+             if( gen.eta() < -3.0 && gen.eta() > -5.0 ) negDS = true;
+           }
+         }
+       }
+       // fill histo
+       if( gen.status() == 1 && gen.charge() != 0 && !doMCbyTP_ )
          genSpectrum_->Fill( gen.eta(), gen.pt(), occ);
      }
+     if( posDS && negDS ) isDS = true;
    }
 
+
+   // fill gen spectrum using TP 
    if( doMCbyTP_ )
    {
      edm::Handle<TrackingParticleCollection>  TPCollection;
@@ -236,8 +264,7 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
      {      
        TrackingParticleRef tpr(TPCollection, i);
        TrackingParticle* tp=const_cast<TrackingParticle*>(tpr.get());
-         
-       if(tp->status() < 0 || tp->charge()==0) continue; 
+       if( tp->status() < 0 || tp->charge()==0) continue; 
        genSpectrum_->Fill( tp->eta(), tp->pt(), occ);
      }
    }
@@ -280,7 +307,7 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
    }
 
 
-
+   int multiplicity =0;
    int nTrkSel = 0;
    for( const auto & track : * tcol )
    {
@@ -301,7 +328,7 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
        if(fabs(dz/dzsigma) > dzErrMax_) continue;
        if(track.ptError() / track.pt() > ptErrMax_) continue;
      }
-
+     multiplicity++;
      trkSpectrum_->Fill( track.eta(), track.pt(), occ);
          
      if( track.eta() <= etaMax_ && track.eta() >= etaMin_ && track.pt() > ptMin_)
@@ -330,6 +357,9 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
 
    }
    evtPerf_["NtrkSel"]->Fill(nTrkSel);
+   evtPerf_["multiplicity"]->Fill(multiplicity);
+   if( isDS) evtPerf_["multDS"]->Fill(multiplicity);
+   if( !isDS) evtPerf_["multNonDS"]->Fill(multiplicity);
 }
 
 
@@ -398,6 +428,10 @@ RpPbTrackingAnalyzer::initHistos(const edm::Service<TFileService> & fs)
 
   evtPerf_["NvtxLumi"] = fs->make<TH1F>("evtNvtxLumi","Primary Vertices by Lumi",200,0,2000);
   evtPerf_["Lumi"] = fs->make<TH1F>("evtLumi","Events by Lumi",200,0,2000);
+
+  evtPerf_["multiplicity"] = fs->make<TH1F>("multiplicity","Event Multiplicity (selected tracks)",500,0,500);
+  evtPerf_["multDS"] = fs->make<TH1F>("multDS","DS Event Multiplicity (selected tracks)",500,0,500);
+  evtPerf_["multNonDS"] = fs->make<TH1F>("multNonDS","Non-DS Event Multiplicity (selected tracks)",500,0,500);
 
   evtPerf2D_["ncollCent"] = fs->make<TH2F>("ncollCent","Ncoll versus Centrality",
                                 50,0,50,100,0,100);
