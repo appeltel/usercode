@@ -14,12 +14,6 @@ trkAna_noBS = Appeltel.RpPbAnalysis.RpPbTrackingAnalyzer_cfi.trkAna.clone(
    vertexSrc = cms.InputTag("offlinePrimaryVertices")
 )
 
-trkAnaMinBias = cms.Sequence( Appeltel.RpPbAnalysis.RpPbTrackingAnalyzer_cfi.trkAna 
-                              * trkAna_quality
-                              * trkAna_pixel
-                              * trkAna_noBS
-)
-
 
 trkAna_HIN12017 = Appeltel.RpPbAnalysis.RpPbTrackingAnalyzer_cfi.trkAna.clone(
    applyCuts = cms.bool(True),
