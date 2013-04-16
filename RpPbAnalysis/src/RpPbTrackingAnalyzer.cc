@@ -53,6 +53,7 @@ class RpPbTrackingAnalyzer : public edm::EDAnalyzer {
       virtual void analyze(const edm::Event&, const edm::EventSetup&);
       virtual void endJob() ;
       void initHistos(const edm::Service<TFileService> & fs);
+      bool passesTrackCuts(const reco::Track & track, const reco::Vertex & vertex);
 
       // ----------member data ---------------------------
 
@@ -68,21 +69,10 @@ class RpPbTrackingAnalyzer : public edm::EDAnalyzer {
       TH3F* genSpectrum_; 
 
       TH1F* events_;
-      TH1F* vertices_;
-      TH1F* tracks_;
-      TH1F* trackseta_;
-
-
-      int nevt_;
-      int ntrack_;
-      int nvertex_;
 
       edm::InputTag vertexSrc_;
       edm::InputTag trackSrc_;
       edm::InputTag jetSrc_;
-      double etaMin_;
-      double etaMax_;
-      double ptMin_;
       double vertexZMax_;
  
       CentralityProvider * centrality_;
@@ -108,18 +98,16 @@ class RpPbTrackingAnalyzer : public edm::EDAnalyzer {
       edm::InputTag genSrc_;
       bool doMCbyTP_;
       edm::InputTag tpSrc_;
+
+      bool doTrigEffCorrection_;
+      double zeroMultFraction_;
+      std::vector<double> trigEffByMult_;
 };
 
 RpPbTrackingAnalyzer::RpPbTrackingAnalyzer(const edm::ParameterSet& iConfig):
-nevt_(0),
-ntrack_(0),
-nvertex_(0),
 vertexSrc_(iConfig.getParameter<edm::InputTag>("vertexSrc")),
 trackSrc_(iConfig.getParameter<edm::InputTag>("trackSrc")),
 jetSrc_(iConfig.getParameter<edm::InputTag>("jetSrc")),
-etaMin_(iConfig.getParameter<double>("etaMin")),
-etaMax_(iConfig.getParameter<double>("etaMax")),
-ptMin_(iConfig.getParameter<double>("ptMin")),
 vertexZMax_(iConfig.getParameter<double>("vertexZMax")),
 applyCuts_(iConfig.getParameter<bool>("applyCuts")),
 qualityString_(iConfig.getParameter<std::string>("qualityString")),
@@ -137,7 +125,10 @@ jetEtaMax_(iConfig.getParameter<double>("jetEtaMax")),
 doMC_(iConfig.getParameter<bool>("doMC")),
 genSrc_(iConfig.getParameter<edm::InputTag>("genSrc")),
 doMCbyTP_(iConfig.getParameter<bool>("doMCbyTP")),
-tpSrc_(iConfig.getParameter<edm::InputTag>("tpSrc"))
+tpSrc_(iConfig.getParameter<edm::InputTag>("tpSrc")),
+doTrigEffCorrection_(iConfig.getParameter<bool>("doTrigEffCorrection")),
+zeroMultFraction_(iConfig.getParameter<double>("zeroMultFraction")),
+trigEffByMult_(iConfig.getParameter<std::vector<double> >("trigEffByMult"))
 {
    edm::Service<TFileService> fs;
    initHistos(fs);
@@ -168,7 +159,23 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
    if( vsorted.size() == 0) return;
    // skip events failing vertex cut
    if( fabs(vsorted[0].z()) > vertexZMax_ ) return;
- 
+
+   // determine event multipliticy (selected tracks)
+   int multiplicity =0;
+   for( const auto & track : * tcol )
+   { 
+     if( passesTrackCuts(track, vsorted[0]) ) multiplicity++;
+   }
+
+   // determine weighting factor based on multiplicity
+   // if weighting is to be performed
+   double w = 1.0;
+   if( doTrigEffCorrection_ )
+   {
+     if( multiplicity > 0 && multiplicity < (int) trigEffByMult_.size())
+       w = w / trigEffByMult_[multiplicity];
+   }
+
    // obtain jets, if we are considering them
    Handle<std::vector<pat::Jet> > jets;
    std::vector<const pat::Jet *> sortedJets;
@@ -185,18 +192,17 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
       sortByPtRef(&sortedJets); 
    }
 
-   nevt_++;
-   events_->Fill(0.5); 
-   evtPerf_["Nvtx"]->Fill(vsorted.size());
-   evtPerf_["Ntrk"]->Fill(tcol->size());
-
+   // fill event based histograms
+   events_->Fill(0.5,w); 
+   evtPerf_["Nvtx"]->Fill(vsorted.size(),w);
+   evtPerf_["Ntrk"]->Fill(tcol->size(),w);
    int lumi = iEvent.getLuminosityBlock().luminosityBlock();
-   evtPerf_["Lumi"]->Fill(lumi);
-   evtPerf_["NvtxLumi"]->Fill(lumi,vsorted.size());
+   evtPerf_["Lumi"]->Fill(lumi,w);
+   evtPerf_["NvtxLumi"]->Fill(lumi,vsorted.size()*w);
 
    if (!centrality_) centrality_ = new CentralityProvider(iSetup);
    centrality_->newEvent(iEvent,iSetup); 
-   evtPerf_["centrality"]->Fill(centrality_->getBin());
+   evtPerf_["centrality"]->Fill(centrality_->getBin(),w);
 
    // determine occupancy variable for event
    double occ = 0.;  
@@ -218,11 +224,11 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
      iEvent.getByLabel("generator",hepmc);
      int ncoll = hepmc->GetEvent()->heavy_ion()->Ncoll();
      float b = hepmc->GetEvent()->heavy_ion()->impact_parameter();
-     evtPerf_["ncoll"]->Fill( ncoll );
-     evtPerf_["b"]->Fill( b );
-     evtPerf2D_["ncollCent"]->Fill( ncoll, centrality_->getBin());
-     evtPerf2D_["bCent"]->Fill( b, centrality_->getBin());
-     evtPerf2D_["bncoll"]->Fill( b, ncoll);
+     evtPerf_["ncoll"]->Fill( ncoll ,w);
+     evtPerf_["b"]->Fill( b,w );
+     evtPerf2D_["ncollCent"]->Fill( ncoll, centrality_->getBin(),w);
+     evtPerf2D_["bCent"]->Fill( b, centrality_->getBin(),w);
+     evtPerf2D_["bncoll"]->Fill( b, ncoll,w);
      if( occByNcoll_) occ = ncoll;
 
      bool posDS = false; bool negDS = false;
@@ -242,18 +248,17 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
          {
            if ( particleDataTable_->particle(particleID)->lifetime() > 1e-18 )
            {
-             if( gen.eta() > 3.0 && gen.eta() < 5.0 ) posDS = true;
-             if( gen.eta() < -3.0 && gen.eta() > -5.0 ) negDS = true;
+             if( gen.energy() > 3.0 && gen.eta() > 3.0 && gen.eta() < 5.0 ) posDS = true;
+             if( gen.energy() > 3.0 && gen.eta() < -3.0 && gen.eta() > -5.0 ) negDS = true;
            }
          }
        }
-       // fill histo
+       // fill gen spectrum with genParticles
        if( gen.status() == 1 && gen.charge() != 0 && !doMCbyTP_ )
-         genSpectrum_->Fill( gen.eta(), gen.pt(), occ);
+         genSpectrum_->Fill( gen.eta(), gen.pt(), occ,w );
      }
      if( posDS && negDS ) isDS = true;
    }
-
 
    // fill gen spectrum using TP 
    if( doMCbyTP_ )
@@ -265,39 +270,44 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
        TrackingParticleRef tpr(TPCollection, i);
        TrackingParticle* tp=const_cast<TrackingParticle*>(tpr.get());
        if( tp->status() < 0 || tp->charge()==0) continue; 
-       genSpectrum_->Fill( tp->eta(), tp->pt(), occ);
+       genSpectrum_->Fill( tp->eta(), tp->pt(), occ,w);
      }
    }
 
+   // fill event histos relating to DS 
+   evtPerf_["multiplicity"]->Fill(multiplicity,w);
+   if( isDS) evtPerf_["multDS"]->Fill(multiplicity,w);
+   if( !isDS) evtPerf_["multNonDS"]->Fill(multiplicity,w);
+
+
+   // fill vertex performance histograms
    int vcount = 0; 
    for( const auto & vi :  vsorted )
    {
-     vtxPerf_["Ntrk"]->Fill(vi.tracksSize());
-     vtxPerf_["x"]->Fill(vi.x());
-     vtxPerf_["y"]->Fill(vi.y());
-     vtxPerf_["z"]->Fill(vi.z());
-     vtxPerf2D_["Ntrk2D"]->Fill(vcount,vi.tracksSize());
-     vertices_->Fill(0.5);
+     vtxPerf_["Ntrk"]->Fill(vi.tracksSize(),w);
+     vtxPerf_["x"]->Fill(vi.x(),w);
+     vtxPerf_["y"]->Fill(vi.y(),w);
+     vtxPerf_["z"]->Fill(vi.z(),w);
+     vtxPerf2D_["Ntrk2D"]->Fill(vcount,vi.tracksSize(),w);
      vcount++;
-     nvertex_++;
    }
-
+   // comparisons between first and additional primary vertices
    for (unsigned int i =1; i<vsorted.size(); i++)
    {
      double dz = fabs( vsorted[i].z() - vsorted[0].z() );
      double dx = fabs( vsorted[i].x() - vsorted[0].x() );
      double dy = fabs( vsorted[i].y() - vsorted[0].y() );
      double dxy  = sqrt ( dx*dx + dy*dy );
-     vtxPerf_["assocVtxDz"]->Fill(dz);
-     vtxPerf2D_["assocVtxDzNtrk"]->Fill(dz,vsorted[i].tracksSize() );
+     vtxPerf_["assocVtxDz"]->Fill(dz,w);
+     vtxPerf2D_["assocVtxDzNtrk"]->Fill(dz,vsorted[i].tracksSize(),w );
      vtxPerf_["assocVtxDxy"]->Fill(dxy);
-     vtxPerf2D_["assocVtxDxyNtrk"]->Fill(dxy,vsorted[i].tracksSize() );
+     vtxPerf2D_["assocVtxDxyNtrk"]->Fill(dxy,vsorted[i].tracksSize(),w );
    }
-
+  
+   // use vertex with most tracks as primary vertex
+   // determine position and error
    math::XYZPoint vtxPoint(0.0,0.0,0.0);
    double vzErr =0.0, vxErr=0.0, vyErr=0.0;
-  
-   // use vertex w most tracks as primary vertex
    if( vsorted.size() != 0 )
    {
      vtxPoint=vsorted.begin()->position();
@@ -305,61 +315,39 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
      vxErr=vsorted.begin()->xError();
      vyErr=vsorted.begin()->yError();
    }
-
-
-   int multiplicity =0;
-   int nTrkSel = 0;
+  
+   // loop through reconstructed tracks and fill
+   // track spectrum and performance histograms
    for( const auto & track : * tcol )
    {
-
-     tracks_->Fill(0.5);
-
      double dxy=0.0, dz=0.0, dxysigma=0.0, dzsigma=0.0;
      dxy = track.dxy(vtxPoint);
      dz = track.dz(vtxPoint);
      dxysigma = sqrt(track.d0Error()*track.d0Error()+vxErr*vyErr);
      dzsigma = sqrt(track.dzError()*track.dzError()+vzErr*vzErr);
        
-     if ( applyCuts_)
-     {
-       if(track.quality(reco::TrackBase::qualityByName(qualityString_)) != 1) 
-        continue;
-       if(fabs(dxy/dxysigma) > dxyErrMax_) continue;
-       if(fabs(dz/dzsigma) > dzErrMax_) continue;
-       if(track.ptError() / track.pt() > ptErrMax_) continue;
-     }
-     multiplicity++;
-     trkSpectrum_->Fill( track.eta(), track.pt(), occ);
-         
-     if( track.eta() <= etaMax_ && track.eta() >= etaMin_ && track.pt() > ptMin_)
-     {
-       nTrkSel++;
-       trackseta_->Fill(0.5);
-       trkPerf_["Nhit"]->Fill(track.numberOfValidHits()); 
-       trkPerf_["pt"]->Fill(track.pt()); 
-       trkPerf_["eta"]->Fill( track.eta() );
-       trkPerf2D_["etaphi"]->Fill( track.eta(), track.phi() );
-       trkPerf_["ptHigh"]->Fill(track.pt()); 
-       trkPerf_["phi"]->Fill(track.phi()); 
-       trkPerf_["dxyErr"]->Fill(dxy/dxysigma); 
-       trkPerf_["dzErr"]->Fill(dz/dzsigma); 
-       trkPerf_["chi2"]->Fill(track.normalizedChi2());
-       trkPerf_["pterr"]->Fill(track.ptError() / track.pt() );
-       trkPerf2D_["etavz"]->Fill( vtxPoint.z(), track.eta() );
-       trkPerf3D_["Nhit3D"]->Fill(track.eta(), track.pt(), track.numberOfValidHits());
-       trkPerf3D_["phi3D"]->Fill(track.eta(), track.pt(), track.phi());
-       trkPerf3D_["dxyErr3D"]->Fill(track.eta(), track.pt(), dxy/dxysigma);
-       trkPerf3D_["dzErr3D"]->Fill(track.eta(), track.pt(), dz/dzsigma);
-       trkPerf3D_["chi23D"]->Fill(track.eta(), track.pt(), track.normalizedChi2());
-       trkPerf3D_["pterr3D"]->Fill(track.eta(), track.pt(), track.ptError() / track.pt() );
-       ntrack_++;
-     }
+     if( !passesTrackCuts(track, vsorted[0]) ) continue;
+
+     trkSpectrum_->Fill( track.eta(), track.pt(), occ,w);
+     trkPerf_["Nhit"]->Fill(track.numberOfValidHits(),w); 
+     trkPerf_["pt"]->Fill(track.pt(),w); 
+     trkPerf_["eta"]->Fill( track.eta(),w );
+     trkPerf2D_["etaphi"]->Fill( track.eta(), track.phi(),w );
+     trkPerf_["ptHigh"]->Fill(track.pt(),w); 
+     trkPerf_["phi"]->Fill(track.phi(),w); 
+     trkPerf_["dxyErr"]->Fill(dxy/dxysigma,w); 
+     trkPerf_["dzErr"]->Fill(dz/dzsigma,w); 
+     trkPerf_["chi2"]->Fill(track.normalizedChi2(),w);
+     trkPerf_["pterr"]->Fill(track.ptError() / track.pt(),w );
+     trkPerf2D_["etavz"]->Fill( vtxPoint.z(), track.eta(),w );
+     trkPerf3D_["Nhit3D"]->Fill(track.eta(), track.pt(), track.numberOfValidHits(),w);
+     trkPerf3D_["phi3D"]->Fill(track.eta(), track.pt(), track.phi(),w);
+     trkPerf3D_["dxyErr3D"]->Fill(track.eta(), track.pt(), dxy/dxysigma,w);
+     trkPerf3D_["dzErr3D"]->Fill(track.eta(), track.pt(), dz/dzsigma,w);
+     trkPerf3D_["chi23D"]->Fill(track.eta(), track.pt(), track.normalizedChi2(),w);
+     trkPerf3D_["pterr3D"]->Fill(track.eta(), track.pt(), track.ptError() / track.pt(),w );
 
    }
-   evtPerf_["NtrkSel"]->Fill(nTrkSel);
-   evtPerf_["multiplicity"]->Fill(multiplicity);
-   if( isDS) evtPerf_["multDS"]->Fill(multiplicity);
-   if( !isDS) evtPerf_["multNonDS"]->Fill(multiplicity);
 }
 
 
@@ -368,9 +356,6 @@ RpPbTrackingAnalyzer::initHistos(const edm::Service<TFileService> & fs)
 {
 
   events_ = fs->make<TH1F>("events","",1,0,1);
-  tracks_ = fs->make<TH1F>("tracks","",1,0,1);
-  trackseta_ = fs->make<TH1F>("trackseta","",1,0,1);
-  vertices_ = fs->make<TH1F>("vertices","",1,0,1);
 
   trkSpectrum_ = fs->make<TH3F>("trkSpectrum",";#eta;p_{T};occ var",
                            etaBins_.size()-1, &etaBins_[0],
@@ -420,7 +405,6 @@ RpPbTrackingAnalyzer::initHistos(const edm::Service<TFileService> & fs)
 
 
   evtPerf_["Ntrk"] = fs->make<TH1F>("evtNtrk","Tracks per event",100,0,400);
-  evtPerf_["NtrkSel"] = fs->make<TH1F>("evtNtrkSel","Selected Tracks per event",100,0,500);
   evtPerf_["Nvtx"] = fs->make<TH1F>("evtNvtx","Primary Vertices per event",10,0,10);
   evtPerf_["centrality"] = fs->make<TH1F>("centrality","Event centrality bin",100,0,100);
   evtPerf_["ncoll"] = fs->make<TH1F>("ncoll","Event Ncoll from Generator",50,0,50);
@@ -469,7 +453,6 @@ RpPbTrackingAnalyzer::initHistos(const edm::Service<TFileService> & fs)
   trkPerf2D_["etaphi"] = fs->make<TH2F>("trkEtaPhi","Track Eta-Phi Map;#eta;#phi",50,-2.5,2.5,100,-3.15,3.15);
   trkPerf2D_["etavz"] = fs->make<TH2F>("trkEtaVz","Track Eta vs Vertex z;Vertex z (cm);#eta",
                                        100,-30,30,100,-3.0,3.0);
-
 }
 
 
@@ -490,6 +473,36 @@ RpPbTrackingAnalyzer::beginJob()
 void
 RpPbTrackingAnalyzer::endJob()
 {
+   // scale number of events by missing zero multiplicity DS events
+   if( doTrigEffCorrection_ )
+     events_->Scale(1./(1.-zeroMultFraction_));
+}
+
+bool
+RpPbTrackingAnalyzer::passesTrackCuts(const reco::Track & track, const reco::Vertex & vertex)
+{
+   if ( ! applyCuts_ ) return true;
+
+   math::XYZPoint vtxPoint(0.0,0.0,0.0);
+   double vzErr =0.0, vxErr=0.0, vyErr=0.0;
+   vtxPoint=vertex.position();
+   vzErr=vertex.zError();
+   vxErr=vertex.xError();
+   vyErr=vertex.yError();
+
+   double dxy=0.0, dz=0.0, dxysigma=0.0, dzsigma=0.0;
+   dxy = track.dxy(vtxPoint);
+   dz = track.dz(vtxPoint);
+   dxysigma = sqrt(track.d0Error()*track.d0Error()+vxErr*vyErr);
+   dzsigma = sqrt(track.dzError()*track.dzError()+vzErr*vzErr);
+ 
+   if(track.quality(reco::TrackBase::qualityByName(qualityString_)) != 1)
+       return false;
+   if(fabs(dxy/dxysigma) > dxyErrMax_) return false;
+   if(fabs(dz/dzsigma) > dzErrMax_) return false;
+   if(track.ptError() / track.pt() > ptErrMax_) return false;
+
+   return true;
 }
 
 DEFINE_FWK_MODULE(RpPbTrackingAnalyzer);

@@ -6,9 +6,6 @@ trkAna  = cms.EDAnalyzer('RpPbTrackingAnalyzer',
    trackSrc = cms.InputTag("generalTracks"),
    vertexSrc = cms.InputTag("offlinePrimaryVerticesWithBS"),
    jetSrc = cms.InputTag('akPu3PFpatJets'),
-   etaMin = cms.double(-3.0),
-   etaMax = cms.double(3.0),
-   ptMin = cms.double(0.0),
    vertexZMax = cms.double(99.0),
    ptBins = cms.vdouble(
         0.0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45,
@@ -37,5 +34,8 @@ trkAna  = cms.EDAnalyzer('RpPbTrackingAnalyzer',
     doMC = cms.bool(False),
     genSrc = cms.InputTag("genParticles"),
     doMCbyTP = cms.bool(False),
-    tpSrc = cms.InputTag('mergedtruth','MergedTrackTruth')
+    tpSrc = cms.InputTag('mergedtruth','MergedTrackTruth'),
+    doTrigEffCorrection = cms.bool(False),
+    trigEffByMult = cms.vdouble(0.0,1.0),
+    zeroMultFraction = cms.double(0.0)
 )

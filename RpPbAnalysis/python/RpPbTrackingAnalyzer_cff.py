@@ -2,71 +2,27 @@ import FWCore.ParameterSet.Config as cms
 
 import Appeltel.RpPbAnalysis.RpPbTrackingAnalyzer_cfi
 
-trkAna_etaFull = Appeltel.RpPbAnalysis.RpPbTrackingAnalyzer_cfi.trkAna.clone()
 
-trkAna_etaFullQuality = trkAna_etaFull.clone(
+trkAna_quality = trkAna.clone(
         applyCuts = cms.bool(True)
 )
 
-trkAna_etaN2 = trkAna_etaFull.clone(
-   etaMin = cms.double(-2.5),
-   etaMax = cms.double(-1.5)
-)
-
-trkAna_etaN1 = trkAna_etaFull.clone(
-   etaMin = cms.double(-1.5),
-   etaMax = cms.double(-0.5)
-)
-
-trkAna_eta0 = trkAna_etaFull.clone(
-   etaMin = cms.double(-0.5),
-   etaMax = cms.double(0.5)
-)
-
-trkAna_etaP1 = trkAna_etaFull.clone(
-   etaMin = cms.double(0.5),
-   etaMax = cms.double(1.5)
-)
-
-trkAna_etaP2 = trkAna_etaFull.clone(
-   etaMin = cms.double(1.5),
-   etaMax = cms.double(2.5)
-)
-
-trkAna_etaFull_pixel = trkAna_etaFull.clone(
+trkAna_pixel = trkAna.clone(
    trackSrc = cms.InputTag("pixelTracks")
 )
 
-trkAna_etaFull_noBS = trkAna_etaFull.clone(
+trkAna_noBS = trkAna.clone(
    vertexSrc = cms.InputTag("offlinePrimaryVertices")
 )
 
-trkAnaMinBias = cms.Sequence( trkAna_etaFull 
-                              * trkAna_etaFullQuality
-                              * trkAna_etaN2
-                              * trkAna_etaN1
-                              * trkAna_eta0
-                              * trkAna_etaP1
-                              * trkAna_etaP2
-                              * trkAna_etaFull_pixel
-                              * trkAna_etaFull_noBS
-)
-
-trkAna_etaFull_highPt = trkAna_etaFull.clone(
-   ptMin = cms.double(6.0)
-)
-
-trkAna_etaFull_highPtQuality = trkAna_etaFull.clone(
-   ptMin = cms.double(6.0),
-   applyCuts = cms.bool(True),
-   qualityString = cms.string('highPurity'),
-   dxyErrMax = cms.double(3.0),
-   dzErrMax = cms.double(3.0),
-   ptErrMax = cms.double(0.1)
+trkAnaMinBias = cms.Sequence( trkAna 
+                              * trkAna_quality
+                              * trkAna_pixel
+                              * trkAna_noBS
 )
 
 
-trkAna_HIN12017 = trkAna_etaFull.clone(
+trkAna_HIN12017 = trkAna.clone(
    applyCuts = cms.bool(True),
    qualityString = cms.string('highPurity'),
    dxyErrMax = cms.double(3.0),
@@ -93,7 +49,13 @@ trkAna_HIN12017 = trkAna_etaFull.clone(
         0., 20., 40., 60., 80., 100., 120., 140., 160., 
         180., 200., 250., 300., 500.
    ),
-   vertexZMax = cms.double(15.)
+   vertexZMax = cms.double(15.),
+   doTrigEffCorrection = cms.bool(True),
+   trigEffByMult = cms.vdouble( 
+       0.0, 0.056, 0.483, 0.809, 0.932, 0.966, 0.973, 
+       0.981, 0.985, 0.991, 0.993, 0.994, 0.995 
+   ),
+   zeroMultFraction = cms.double( 0.00083 )                        
 )
 
 trkAna_HIN12017_MC = trkAna_HIN12017.clone(
