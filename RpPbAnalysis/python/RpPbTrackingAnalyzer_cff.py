@@ -2,27 +2,26 @@ import FWCore.ParameterSet.Config as cms
 
 import Appeltel.RpPbAnalysis.RpPbTrackingAnalyzer_cfi
 
-
-trkAna_quality = trkAna.clone(
+trkAna_quality = Appeltel.RpPbAnalysis.RpPbTrackingAnalyzer_cfi.trkAna.clone(
         applyCuts = cms.bool(True)
 )
 
-trkAna_pixel = trkAna.clone(
+trkAna_pixel = Appeltel.RpPbAnalysis.RpPbTrackingAnalyzer_cfi.trkAna.clone(
    trackSrc = cms.InputTag("pixelTracks")
 )
 
-trkAna_noBS = trkAna.clone(
+trkAna_noBS = Appeltel.RpPbAnalysis.RpPbTrackingAnalyzer_cfi.trkAna.clone(
    vertexSrc = cms.InputTag("offlinePrimaryVertices")
 )
 
-trkAnaMinBias = cms.Sequence( trkAna 
+trkAnaMinBias = cms.Sequence( Appeltel.RpPbAnalysis.RpPbTrackingAnalyzer_cfi.trkAna 
                               * trkAna_quality
                               * trkAna_pixel
                               * trkAna_noBS
 )
 
 
-trkAna_HIN12017 = trkAna.clone(
+trkAna_HIN12017 = Appeltel.RpPbAnalysis.RpPbTrackingAnalyzer_cfi.trkAna.clone(
    applyCuts = cms.bool(True),
    qualityString = cms.string('highPurity'),
    dxyErrMax = cms.double(3.0),
