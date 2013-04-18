@@ -37,5 +37,6 @@ trkAna  = cms.EDAnalyzer('RpPbTrackingAnalyzer',
     tpSrc = cms.InputTag('mergedtruth','MergedTrackTruth'),
     doTrigEffCorrection = cms.bool(False),
     trigEffByMult = cms.vdouble(0.0,1.0),
+    trigContaminationByMult = cms.vdouble(0.0,0.0),
     zeroMultFraction = cms.double(0.0)
 )

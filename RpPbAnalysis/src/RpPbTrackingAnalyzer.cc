@@ -102,6 +102,7 @@ class RpPbTrackingAnalyzer : public edm::EDAnalyzer {
       bool doTrigEffCorrection_;
       double zeroMultFraction_;
       std::vector<double> trigEffByMult_;
+      std::vector<double> trigContaminationByMult_;
 };
 
 RpPbTrackingAnalyzer::RpPbTrackingAnalyzer(const edm::ParameterSet& iConfig):
@@ -128,7 +129,8 @@ doMCbyTP_(iConfig.getParameter<bool>("doMCbyTP")),
 tpSrc_(iConfig.getParameter<edm::InputTag>("tpSrc")),
 doTrigEffCorrection_(iConfig.getParameter<bool>("doTrigEffCorrection")),
 zeroMultFraction_(iConfig.getParameter<double>("zeroMultFraction")),
-trigEffByMult_(iConfig.getParameter<std::vector<double> >("trigEffByMult"))
+trigEffByMult_(iConfig.getParameter<std::vector<double> >("trigEffByMult")),
+trigContaminationByMult_(iConfig.getParameter<std::vector<double> >("trigContaminationByMult"))
 {
    edm::Service<TFileService> fs;
    initHistos(fs);
@@ -174,6 +176,8 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
    {
      if( multiplicity > 0 && multiplicity < (int) trigEffByMult_.size())
        w = w / trigEffByMult_[multiplicity];
+     if( multiplicity > 0 && multiplicity < (int) trigContaminationByMult_.size())
+       w = w * (1.0 - trigContaminationByMult_[multiplicity]);
    }
 
    // obtain jets, if we are considering them
@@ -245,8 +249,9 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
        {
          ParticleData const * particleData = particleDataTable_->particle(particleID);
          if (particleData)
-         {
-           if ( particleDataTable_->particle(particleID)->lifetime() > 1e-18 )
+         { 
+           double ctau =  particleDataTable_->particle(particleID)->lifetime();
+           if ( ctau  > 1e-18 || ctau == 0.0 )
            {
              if( gen.energy() > 3.0 && gen.eta() > 3.0 && gen.eta() < 5.0 ) posDS = true;
              if( gen.energy() > 3.0 && gen.eta() < -3.0 && gen.eta() > -5.0 ) negDS = true;
@@ -325,7 +330,7 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
      dz = track.dz(vtxPoint);
      dxysigma = sqrt(track.d0Error()*track.d0Error()+vxErr*vyErr);
      dzsigma = sqrt(track.dzError()*track.dzError()+vzErr*vzErr);
-       
+
      if( !passesTrackCuts(track, vsorted[0]) ) continue;
 
      trkSpectrum_->Fill( track.eta(), track.pt(), occ,w);
