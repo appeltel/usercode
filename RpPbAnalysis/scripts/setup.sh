@@ -4,8 +4,8 @@ cd $CMSSW_BASE/src
 
 # event selection and centrality 
 cvs co -r pPbProd_v04 DataFormats/HeavyIonEvent
-cvs co -r pPbProd_v04 RecoHI/HiCentralityAlgos
-cvs co -r pPbProd_v03 HeavyIonsAnalysis/Configuration
+cvs co -r pPbProd_v10 RecoHI/HiCentralityAlgos
+cvs co -r pPbProd_v09 HeavyIonsAnalysis/Configuration
 
 # jets 
 cvs co -d CmsHi/JetAnalysis -r HiForest_V02_78 UserCode/CmsHi/JetAnalysis 
