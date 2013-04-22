@@ -75,14 +75,16 @@ process.jetReco= cms.Sequence(
 
 process.p = cms.Path( 
     process.siPixelRecHits *
+    process.PAcollisionEventSelection * 
     process.pACentrality *
     process.jetReco *
     process.tpRecoAssocGeneralTracks *
-    process.PAcollisionEventSelection * 
     process.trkCorr_HIN12017 *
     process.trkCorr_HIN12017_loose *
     process.trkCorr_HIN12017_tight *
     process.trkCorr_HIN12017_Z25 *
-    process.trkCorr_HIN12017_NoRW 
+    process.trkCorr_HIN12017_NoRW *
+    process.trkCorr_HIN12017_wideJetBin *
+    process.trkCorr_HIN12017_Pbp
 )
 
