@@ -13,10 +13,15 @@ class TrackCorrector
     TrackCorrector( std::string fileName );
     void load(std::string dirName);
     double getWeight( double pT, double eta, double occ );
+    double getEventWeight( int M);
+    double getZeroMultFrac();
     virtual ~TrackCorrector();
 
   private:
 
+    static const double trigEff[30];
+    static const double trigFak[30];
+    static const double zeroMFraction;
 
     TFile * table;
     TH3F * rfak;
@@ -24,6 +29,21 @@ class TrackCorrector
     TH3F * reff;
     TH3F * rmul;
 };
+
+const double TrackCorrector::trigEff[30] = {
+        0.0, 0.0448119, 0.513363, 0.77141, 0.883644, 0.926159, 0.948583, 
+        0.960119, 0.966817, 0.972921, 0.976898, 0.980945, 0.983142, 0.986, 0.988247, 
+        0.989673, 0.991689, 0.993215, 0.993808, 0.994555, 0.996014, 0.996399, 0.996832, 
+        0.996901, 0.997528, 0.997738, 0.998142, 0.998412, 0.99869, 0.998518 };
+
+const double TrackCorrector::trigFak[30] = {
+        0.0, 0.0150659, 0.0134671, 0.00927223, 0.00814763, 0.00572825, 0.00545534, 
+        0.00500624, 0.00392851, 0.00290192, 0.0027658, 0.00256728, 0.00172565, 0.00151442, 0.00191661, 
+        0.0013661, 0.000786178, 0.000747828, 0.000770812, 0.000412993, 0.000491937, 0.000288172, 0.000299312, 
+        0.00021031, 0.000264633, 0.000192915, 0.000148894, 0.000151408, 0.000180004, 0.000156213};
+
+const double TrackCorrector::zeroMFraction = 0.00142393;
+
 
 TrackCorrector::TrackCorrector( std::string fileName ) 
 {
@@ -100,4 +120,15 @@ TrackCorrector::getWeight(double pT, double eta, double occ )
   return (1. - fak ) * ( 1. - sec ) / eff  / (1. + mul );
 }
 
+double 
+TrackCorrector::getEventWeight( int M )
+{
+  if( M<1 || M>29) return 1;
+  return (1. - trigFak[M] ) / trigEff[M];
+}
 
+double 
+TrackCorrector::getZeroMultFrac()
+{
+  return zeroMFraction;
+}
