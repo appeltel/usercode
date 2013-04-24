@@ -21,6 +21,7 @@
 #include <TH2.h>
 #include <TH3.h>
 #include <TGraph.h>
+#include <TF1.h>
 
 #include "FWCore/Framework/interface/MakerMacros.h"
 #include "FWCore/ServiceRegistry/interface/Service.h"
@@ -70,6 +71,8 @@ class RpPbTrackingAnalyzer : public edm::EDAnalyzer {
 
       TH1F* events_;
 
+      TF1 * vtxWeightFunc_;
+
       edm::InputTag vertexSrc_;
       edm::InputTag trackSrc_;
       edm::InputTag jetSrc_;
@@ -103,6 +106,10 @@ class RpPbTrackingAnalyzer : public edm::EDAnalyzer {
       double zeroMultFraction_;
       std::vector<double> trigEffByMult_;
       std::vector<double> trigContaminationByMult_;
+
+      std::vector<double> vtxWeightParameters_;
+      bool doVtxReweighting_;     
+
 };
 
 RpPbTrackingAnalyzer::RpPbTrackingAnalyzer(const edm::ParameterSet& iConfig):
@@ -130,15 +137,26 @@ tpSrc_(iConfig.getParameter<edm::InputTag>("tpSrc")),
 doTrigEffCorrection_(iConfig.getParameter<bool>("doTrigEffCorrection")),
 zeroMultFraction_(iConfig.getParameter<double>("zeroMultFraction")),
 trigEffByMult_(iConfig.getParameter<std::vector<double> >("trigEffByMult")),
-trigContaminationByMult_(iConfig.getParameter<std::vector<double> >("trigContaminationByMult"))
+trigContaminationByMult_(iConfig.getParameter<std::vector<double> >("trigContaminationByMult")),
+vtxWeightParameters_(iConfig.getParameter<std::vector<double> >("vtxWeightParameters")),
+doVtxReweighting_(iConfig.getParameter<bool>("doVtxReweighting"))
 {
    edm::Service<TFileService> fs;
    initHistos(fs);
    centrality_ = 0;
+   vtxWeightFunc_ = new TF1("vtxWeight","gaus(0)/gaus(3)",-50.,50.);
+   // vtxWeightParameters should have size 6,
+   // one really should throw an error if not
+   if( (int)vtxWeightParameters_.size() == 6 )
+   {
+     for( unsigned int i=0;i<vtxWeightParameters_.size(); i++)
+       vtxWeightFunc_->SetParameter(i,vtxWeightParameters_[i]);
+   }
 }
 
 RpPbTrackingAnalyzer::~RpPbTrackingAnalyzer()
 {
+   delete vtxWeightFunc_;
 }
 
 void
@@ -179,6 +197,10 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
      if( multiplicity > 0 && multiplicity < (int) trigContaminationByMult_.size())
        w = w * (1.0 - trigContaminationByMult_[multiplicity]);
    }
+
+   // do vertex reweighting of each event if desired
+   if ( doVtxReweighting_ )
+     w *= vtxWeightFunc_->Eval(vsorted[0].z());
 
    // obtain jets, if we are considering them
    Handle<std::vector<pat::Jet> > jets;

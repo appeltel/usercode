@@ -38,5 +38,8 @@ trkAna  = cms.EDAnalyzer('RpPbTrackingAnalyzer',
     doTrigEffCorrection = cms.bool(False),
     trigEffByMult = cms.vdouble(0.0,1.0),
     trigContaminationByMult = cms.vdouble(0.0,0.0),
-    zeroMultFraction = cms.double(0.0)
+    zeroMultFraction = cms.double(0.0),
+    vtxWeightParameters = cms.vdouble( 4.49636e-02, 1.36629e-01, 5.30010e+00,
+                                       2.50170e-02, 4.59123e-01, 9.64888e+00 ),
+    doVtxReweighting = cms.bool(False)
 )
