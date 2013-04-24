@@ -43,10 +43,32 @@ trkCorr_HIN12017_loose = trkCorr_HIN12017.clone(
     ptErrMax = cms.double(0.2)
 )
 
+trkCorr_HIN12017_loose2 = trkCorr_HIN12017.clone(
+    dxyErrMax = cms.double(9.0),
+    dzErrMax = cms.double(9.0),
+    ptErrMax = cms.double(0.3)
+)
+trkCorr_HIN12017_loose3 = trkCorr_HIN12017.clone(
+    dxyErrMax = cms.double(12.0),
+    dzErrMax = cms.double(12.0),
+    ptErrMax = cms.double(0.4)
+)
+
 trkCorr_HIN12017_tight = trkCorr_HIN12017.clone(
     dxyErrMax = cms.double(2.0),
     dzErrMax = cms.double(2.0),
     ptErrMax = cms.double(0.06)
+)
+
+trkCorr_HIN12017_tight2 = trkCorr_HIN12017.clone(
+    dxyErrMax = cms.double(1.6),
+    dzErrMax = cms.double(1.6),
+    ptErrMax = cms.double(0.045)
+)
+trkCorr_HIN12017_tight3 = trkCorr_HIN12017.clone(
+    dxyErrMax = cms.double(1.2),
+    dzErrMax = cms.double(1.2),
+    ptErrMax = cms.double(0.03)
 )
 
 trkCorr_HIN12017_Z25 = trkCorr_HIN12017.clone(
