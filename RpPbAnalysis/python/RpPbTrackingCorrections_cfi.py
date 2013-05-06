@@ -49,5 +49,6 @@ pPbTrkCorr  = cms.EDAnalyzer('RpPbTrackingCorrections',
     dzErrMax = cms.double(3.0),
     ptErrMax = cms.double(0.1),
     fillGenHistos = cms.bool(False),
-    fillTrkPerfHistos = cms.bool(False)
+    fillTrkPerfHistos = cms.bool(False),
+    doMomRes = cms.bool(False)
 )

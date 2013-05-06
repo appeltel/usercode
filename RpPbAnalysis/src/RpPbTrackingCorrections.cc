@@ -78,6 +78,7 @@ class RpPbTrackingCorrections : public edm::EDAnalyzer {
       std::map<std::string,TH2F*> trkCorr2D_;
       std::map<std::string,TH3F*> trkPerf3D_;
       std::map<std::string,TH3F*> genHist3D_;
+      TH3F * momRes_;
       TH1F * vtxZ_;
       TH1F * leadJetEt_;
       TF1 * vtxWeightFunc_;
@@ -128,6 +129,7 @@ class RpPbTrackingCorrections : public edm::EDAnalyzer {
 
       bool fillGenHistos_;
       bool fillTrkPerfHistos_;
+      bool doMomRes_;
 
       enum { BPix1=0, BPix2=1, BPix3=2,
 	     FPix1_neg=3, FPix2_neg=4,
@@ -170,7 +172,8 @@ dxyErrMax_(iConfig.getParameter<double>("dzErrMax")),
 dzErrMax_(iConfig.getParameter<double>("dzErrMax")),
 ptErrMax_(iConfig.getParameter<double>("ptErrMax")),
 fillGenHistos_(iConfig.getParameter<bool>("fillGenHistos")),
-fillTrkPerfHistos_(iConfig.getParameter<bool>("fillTrkPerfHistos"))
+fillTrkPerfHistos_(iConfig.getParameter<bool>("fillTrkPerfHistos")),
+doMomRes_(iConfig.getParameter<bool>("doMomRes"))
 {
    edm::Service<TFileService> fs;
    initHistos(fs);
@@ -392,6 +395,7 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
          const reco::Track* tmtr = rtit->first.get();
          if( ! passesTrackCuts(*tmtr, vsorted[0]) ) continue;
          nrec++;
+         if( doMomRes_ ) momRes_->Fill( tp->eta(), tp->pt(), tmtr->pt(), w);
        }
      }
      if(nrec>0) trkCorr3D_["heff3D"]->Fill(tp->eta(),tp->pt(), occ, w);
@@ -507,6 +511,22 @@ RpPbTrackingCorrections::initHistos(const edm::Service<TFileService> & fs)
 
   vtxZ_ = fs->make<TH1F>("vtxZ","Vertex z position",100,-30,30);
   leadJetEt_ = fs->make<TH1F>("leadJetEt","Vertex z position",1000,0,1000);
+
+  std::vector<double> ptBinsFine;
+  for( unsigned int bin = 0; bin<ptBins_.size()-1; bin++)
+  {
+    double bStart = ptBins_[bin];
+    double bWid = ptBins_[bin+1] - ptBins_[bin];
+    for( int i=0;i<5;i++)
+      ptBinsFine.push_back( bStart + (double)i * bWid / 5. );
+  }
+  ptBinsFine.push_back(ptBins_[ptBins_.size()-1]);
+
+  momRes_ = fs->make<TH3F>("momRes","momentum resolution sim vs reco",
+                           etaBins_.size()-1, &etaBins_[0],
+                           ptBinsFine.size()-1, &ptBinsFine[0],
+                           ptBinsFine.size()-1, &ptBinsFine[0]);
+
 }
 
 bool
