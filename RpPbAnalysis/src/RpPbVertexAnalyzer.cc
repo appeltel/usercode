@@ -19,7 +19,6 @@
 
 #include <TH1.h>
 #include <TH2.h>
-#include <TH3.h>
 #include <TGraph.h>
 
 #include "FWCore/Framework/interface/MakerMacros.h"
@@ -31,7 +30,6 @@
 #include <DataFormats/TrackReco/interface/Track.h>
 #include <DataFormats/TrackReco/interface/TrackFwd.h>
 #include "DataFormats/HeavyIonEvent/interface/CentralityProvider.h"
-#include <DataFormats/Scalers/interface/LumiScalers.h>
 
 class RpPbVertexAnalyzer : public edm::EDAnalyzer {
    public:
@@ -42,7 +40,6 @@ class RpPbVertexAnalyzer : public edm::EDAnalyzer {
    private:
       virtual void beginJob() ;
       virtual void analyze(const edm::Event&, const edm::EventSetup&);
-      virtual void beginLuminosityBlock (edm::LuminosityBlock const &, edm::EventSetup const &);
       virtual void endJob() ;
       void initHistos(const edm::Service<TFileService> & fs);
 
@@ -52,25 +49,21 @@ class RpPbVertexAnalyzer : public edm::EDAnalyzer {
       std::map<std::string,TH2F*> evtPerf2D_;
       std::map<std::string,TH1F*> vtxPerf_;
       std::map<std::string,TH2F*> vtxPerf2D_;
-      std::map<std::string,TH3F*> vtxPerf3D_;
 
       TH1F* events_;
       TH1F* vertices_;
 
       int nevt_;
       int nvertex_;
-      bool newLumi_;
 
       edm::InputTag vertexSrc_;
       CentralityProvider * centrality_;
 
- 
 };
 
 RpPbVertexAnalyzer::RpPbVertexAnalyzer(const edm::ParameterSet& iConfig):
 nevt_(0),
 nvertex_(0),
-newLumi_(true),
 vertexSrc_(iConfig.getParameter<edm::InputTag>("vertexSrc"))
 {
    edm::Service<TFileService> fs;
@@ -80,12 +73,6 @@ vertexSrc_(iConfig.getParameter<edm::InputTag>("vertexSrc"))
 
 RpPbVertexAnalyzer::~RpPbVertexAnalyzer()
 {
-}
-
-void
-RpPbVertexAnalyzer::beginLuminosityBlock(edm::LuminosityBlock const & b, edm::EventSetup const & e )
-{
-  newLumi_  = true;
 }
 
 void
@@ -104,6 +91,7 @@ RpPbVertexAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
       return  a.tracksSize() > b.tracksSize() ? true : false ;
    });
 
+  
    nevt_++;
    events_->Fill(0.5); 
    evtPerf_["Nvtx"]->Fill(vsorted.size());
@@ -112,16 +100,6 @@ RpPbVertexAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
    evtPerf_["Lumi"]->Fill(lumi);
    evtPerf_["NvtxLumi"]->Fill(lumi,vsorted.size());
 
-   if( newLumi_ ) 
-   {
-     Handle<std::vector<LumiScalers> > lcol;
-     iEvent.getByLabel("scalersRawToDigi", lcol);
- 
-     if( lcol->size() > 0 )
-       evtPerf_["puLumi"]->Fill(lumi,lcol->begin()->pileup());
-     newLumi_ = false;
-   } 
- 
    if (!centrality_) centrality_ = new CentralityProvider(iSetup);
    centrality_->newEvent(iEvent,iSetup); 
    evtPerf_["centrality"]->Fill(centrality_->getBin());
@@ -162,7 +140,6 @@ RpPbVertexAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
      vtxPerf2D_["assocVtxChi2Dxy"]->Fill(vsorted[i].normalizedChi2(),dxy); 
      vtxPerf2D_["assocVtxChi2Dz"]->Fill(vsorted[i].normalizedChi2(),dz); 
      vtxPerf2D_["vtxCorrZ"]->Fill( vsorted[0].z(), vsorted[i].z() );
-     vtxPerf3D_["assocVtxDzNtrkNtrkLead"]->Fill(dz,vsorted[i].tracksSize(),vsorted[0].tracksSize()); 
    }
 
 }
@@ -181,7 +158,6 @@ RpPbVertexAnalyzer::initHistos(const edm::Service<TFileService> & fs)
 
   evtPerf_["NvtxLumi"] = fs->make<TH1F>("evtNvtxLumi","Primary Vertices by Lumi",200,0,2000);
   evtPerf_["Lumi"] = fs->make<TH1F>("evtLumi","Events by Lumi",200,0,2000);
-  evtPerf_["puLumi"] = fs->make<TH1F>("puLumi","Pileup by Lumi",2000,0,2000);
 
   vtxPerf_["Ntrk"] = fs->make<TH1F>("vtxNtrk","Tracks per vertex",50,0,200);
   vtxPerf_["x"] = fs->make<TH1F>("vtxX","Vertex x position",1000,-1,1);
@@ -217,10 +193,6 @@ RpPbVertexAnalyzer::initHistos(const edm::Service<TFileService> & fs)
   vtxPerf2D_["vtxCorrZ"] = fs->make<TH2F>("vtzCorrZ",
                                  "z position of first PV vs additional PVs; z_{trig} (cm); z_{assoc} (cm)",
                                  300,-30,30,300,-30,30);
-
-  vtxPerf3D_["assocVtxDzNtrkNtrkLead"] = fs->make<TH3F>("assocVtxDzNtrkNtrkLead",
-                                 "Z Distance from first PV vs Ntrk of assoc vs Ntrk of lead; dz (cm); Ntrk; NtrkLead",
-                                 500,0,50,200,0,200,20,0,400);
 
 }
 

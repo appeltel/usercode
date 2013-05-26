@@ -53,26 +53,10 @@ pileupVertexFilterCutEandG = pileupVertexFilterCutG.clone(
     doDxyDzCut = cms.bool(True)
 )
 
-pileupVertexFilterCutW = pileupVertexFilterCutG.clone(
-    doDzNtrkCut = cms.bool(False),
-    doSurfaceCut = cms.bool(True)
+pileupVertexFilterDevelBits = cms.Sequence( 
+    pileupVertexFilterCutG +
+    pileupVertexFilterCutGloose +
+    pileupVertexFilterCutGtight +
+    pileupVertexFilterCutE + 
+    pileupVertexFilterCutEandG
 )
-
-pileupVertexFilterCutWplus = pileupVertexFilterCutG.clone(
-    doDzNtrkCut = cms.bool(False),
-    doSurfaceCut = cms.bool(True),
-    dxyVeto = cms.double(0.05)
-)  
-
-
-pileupVertexFilterCutGplusplus = pileupVertexFilterCutG.clone(
-    doDzNtrkCut = cms.bool(False),
-    doSurfaceCut = cms.bool(True),
-    dxyVeto = cms.double(0.05),
-    surfaceMinDzEval = cms.double(0.0),
-    surfaceFunctionString = cms.string("[0]*exp([1]*(x-([3]*(y-[4])**2+[5])))+[2]"),
-    surfaceCutParameters = cms.vdouble(
-    28.593,-1.525,2.636788,-1.5e-5,200.,0.0
-    ) 
-)
-
