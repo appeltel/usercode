@@ -182,9 +182,10 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
 
    // determine event multipliticy (selected tracks)
    int multiplicity =0;
-   for( const auto & track : * tcol )
+   reco::TrackCollection::const_iterator track;
+   for(  track = tcol->begin(); track != tcol->end() ; ++track )
    { 
-     if( passesTrackCuts(track, vsorted[0]) ) multiplicity++;
+     if( passesTrackCuts(*track, vsorted[0]) ) multiplicity++;
    }
 
    // determine weighting factor based on multiplicity
@@ -263,10 +264,11 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
 
      Handle<reco::GenParticleCollection> gcol;
      iEvent.getByLabel(genSrc_, gcol);
-     for( const auto & gen : * gcol )
+     reco::GenParticleCollection::const_iterator gen;
+     for( gen = gcol->begin(); gen != gcol->end(); gen++ )
      {
        // see if genpartice counts for DS
-       HepPDT::ParticleID particleID(gen.pdgId());
+       HepPDT::ParticleID particleID(gen->pdgId());
        if (particleID.isValid())
        {
          ParticleData const * particleData = particleDataTable_->particle(particleID);
@@ -275,14 +277,14 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
            double ctau =  particleDataTable_->particle(particleID)->lifetime();
            if ( ctau  > 1e-18 || ctau == 0.0 )
            {
-             if( gen.energy() > 3.0 && gen.eta() > 3.0 && gen.eta() < 5.0 ) posDS = true;
-             if( gen.energy() > 3.0 && gen.eta() < -3.0 && gen.eta() > -5.0 ) negDS = true;
+             if( gen->energy() > 3.0 && gen->eta() > 3.0 && gen->eta() < 5.0 ) posDS = true;
+             if( gen->energy() > 3.0 && gen->eta() < -3.0 && gen->eta() > -5.0 ) negDS = true;
            }
          }
        }
        // fill gen spectrum with genParticles
-       if( gen.status() == 1 && gen.charge() != 0 && !doMCbyTP_ )
-         genSpectrum_->Fill( gen.eta(), gen.pt(), occ,w );
+       if( gen->status() == 1 && gen->charge() != 0 && !doMCbyTP_ )
+         genSpectrum_->Fill( gen->eta(), gen->pt(), occ,w );
      }
      if( posDS && negDS ) isDS = true;
    }
@@ -309,13 +311,14 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
 
    // fill vertex performance histograms
    int vcount = 0; 
-   for( const auto & vi :  vsorted )
+   std::vector<reco::Vertex>::const_iterator vi; 
+   for( vi = vsorted.begin(); vi != vsorted.end() ; vi++ )
    {
-     vtxPerf_["Ntrk"]->Fill(vi.tracksSize(),w);
-     vtxPerf_["x"]->Fill(vi.x(),w);
-     vtxPerf_["y"]->Fill(vi.y(),w);
-     vtxPerf_["z"]->Fill(vi.z(),w);
-     vtxPerf2D_["Ntrk2D"]->Fill(vcount,vi.tracksSize(),w);
+     vtxPerf_["Ntrk"]->Fill(vi->tracksSize(),w);
+     vtxPerf_["x"]->Fill(vi->x(),w);
+     vtxPerf_["y"]->Fill(vi->y(),w);
+     vtxPerf_["z"]->Fill(vi->z(),w);
+     vtxPerf2D_["Ntrk2D"]->Fill(vcount,vi->tracksSize(),w);
      vcount++;
    }
    // comparisons between first and additional primary vertices
@@ -345,34 +348,34 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
   
    // loop through reconstructed tracks and fill
    // track spectrum and performance histograms
-   for( const auto & track : * tcol )
+   for( track = tcol->begin(); track != tcol->end(); track++ )
    {
      double dxy=0.0, dz=0.0, dxysigma=0.0, dzsigma=0.0;
-     dxy = track.dxy(vtxPoint);
-     dz = track.dz(vtxPoint);
-     dxysigma = sqrt(track.d0Error()*track.d0Error()+vxErr*vyErr);
-     dzsigma = sqrt(track.dzError()*track.dzError()+vzErr*vzErr);
+     dxy = track->dxy(vtxPoint);
+     dz = track->dz(vtxPoint);
+     dxysigma = sqrt(track->d0Error()*track->d0Error()+vxErr*vyErr);
+     dzsigma = sqrt(track->dzError()*track->dzError()+vzErr*vzErr);
 
-     if( !passesTrackCuts(track, vsorted[0]) ) continue;
+     if( !passesTrackCuts(*track, vsorted[0]) ) continue;
 
-     trkSpectrum_->Fill( track.eta(), track.pt(), occ,w);
-     trkPerf_["Nhit"]->Fill(track.numberOfValidHits(),w); 
-     trkPerf_["pt"]->Fill(track.pt(),w); 
-     trkPerf_["eta"]->Fill( track.eta(),w );
-     trkPerf2D_["etaphi"]->Fill( track.eta(), track.phi(),w );
-     trkPerf_["ptHigh"]->Fill(track.pt(),w); 
-     trkPerf_["phi"]->Fill(track.phi(),w); 
+     trkSpectrum_->Fill( track->eta(), track->pt(), occ,w);
+     trkPerf_["Nhit"]->Fill(track->numberOfValidHits(),w); 
+     trkPerf_["pt"]->Fill(track->pt(),w); 
+     trkPerf_["eta"]->Fill( track->eta(),w );
+     trkPerf2D_["etaphi"]->Fill( track->eta(), track->phi(),w );
+     trkPerf_["ptHigh"]->Fill(track->pt(),w); 
+     trkPerf_["phi"]->Fill(track->phi(),w); 
      trkPerf_["dxyErr"]->Fill(dxy/dxysigma,w); 
      trkPerf_["dzErr"]->Fill(dz/dzsigma,w); 
-     trkPerf_["chi2"]->Fill(track.normalizedChi2(),w);
-     trkPerf_["pterr"]->Fill(track.ptError() / track.pt(),w );
-     trkPerf2D_["etavz"]->Fill( vtxPoint.z(), track.eta(),w );
-     trkPerf3D_["Nhit3D"]->Fill(track.eta(), track.pt(), track.numberOfValidHits(),w);
-     trkPerf3D_["phi3D"]->Fill(track.eta(), track.pt(), track.phi(),w);
-     trkPerf3D_["dxyErr3D"]->Fill(track.eta(), track.pt(), dxy/dxysigma,w);
-     trkPerf3D_["dzErr3D"]->Fill(track.eta(), track.pt(), dz/dzsigma,w);
-     trkPerf3D_["chi23D"]->Fill(track.eta(), track.pt(), track.normalizedChi2(),w);
-     trkPerf3D_["pterr3D"]->Fill(track.eta(), track.pt(), track.ptError() / track.pt(),w );
+     trkPerf_["chi2"]->Fill(track->normalizedChi2(),w);
+     trkPerf_["pterr"]->Fill(track->ptError() / track->pt(),w );
+     trkPerf2D_["etavz"]->Fill( vtxPoint.z(), track->eta(),w );
+     trkPerf3D_["Nhit3D"]->Fill(track->eta(), track->pt(), track->numberOfValidHits(),w);
+     trkPerf3D_["phi3D"]->Fill(track->eta(), track->pt(), track->phi(),w);
+     trkPerf3D_["dxyErr3D"]->Fill(track->eta(), track->pt(), dxy/dxysigma,w);
+     trkPerf3D_["dzErr3D"]->Fill(track->eta(), track->pt(), dz/dzsigma,w);
+     trkPerf3D_["chi23D"]->Fill(track->eta(), track->pt(), track->normalizedChi2(),w);
+     trkPerf3D_["pterr3D"]->Fill(track->eta(), track->pt(), track->ptError() / track->pt(),w );
 
    }
 }
