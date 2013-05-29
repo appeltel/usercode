@@ -66,8 +66,7 @@ class RpPbTrackingAnalyzer : public edm::EDAnalyzer {
       std::map<std::string,TH1F*> vtxPerf_;
       std::map<std::string,TH2F*> vtxPerf2D_;
       
-      TH3F* trkSpectrum_; 
-      TH3F* genSpectrum_; 
+      std::map<std::string,TH3F*> spectrum_; 
 
       TH1F* events_;
 
@@ -249,8 +248,12 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
    {
      Handle<edm::HepMCProduct> hepmc;
      iEvent.getByLabel("generator",hepmc);
-     int ncoll = hepmc->GetEvent()->heavy_ion()->Ncoll();
-     float b = hepmc->GetEvent()->heavy_ion()->impact_parameter();
+     int ncoll = 0; float b = 999.;
+     if( hepmc->GetEvent()->heavy_ion() )
+     {
+       ncoll = hepmc->GetEvent()->heavy_ion()->Ncoll();
+       b = hepmc->GetEvent()->heavy_ion()->impact_parameter();
+     }
      evtPerf_["ncoll"]->Fill( ncoll ,w);
      evtPerf_["b"]->Fill( b,w );
      evtPerf2D_["ncollCent"]->Fill( ncoll, centrality_->getBin(),w);
@@ -284,7 +287,28 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
        }
        // fill gen spectrum with genParticles
        if( gen->status() == 1 && gen->charge() != 0 && !doMCbyTP_ )
-         genSpectrum_->Fill( gen->eta(), gen->pt(), occ,w );
+       {
+
+         spectrum_["genSpectrum"]->Fill( gen->eta(), gen->pt(), occ,w );
+         if( fabs(gen->pdgId()) == 211)
+           spectrum_["genPartPi"]->Fill(gen->eta(), gen->pt(), occ,w );
+         if( fabs(gen->pdgId()) == 321)
+           spectrum_["genPartK"]->Fill(gen->eta(), gen->pt(), occ,w );
+         if( gen->pdgId() == 2212)
+           spectrum_["genPartp+"]->Fill(gen->eta(), gen->pt(), occ,w );
+         if( gen->pdgId() == -2212)
+           spectrum_["genPartp-"]->Fill(gen->eta(), gen->pt(), occ,w );
+         if( fabs(gen->pdgId()) == 3222)
+           spectrum_["genPartSigma"]->Fill(gen->eta(), gen->pt(), occ,w );
+         if( fabs(gen->pdgId()) == 3312)
+           spectrum_["genPartXi"]->Fill(gen->eta(), gen->pt(), occ,w );
+         if( fabs(gen->pdgId()) == 3334)
+           spectrum_["genPartOmega"]->Fill(gen->eta(), gen->pt(), occ,w );
+         if( fabs(gen->pdgId()) == 11)
+           spectrum_["genParte"]->Fill(gen->eta(), gen->pt(), occ,w );
+         if( fabs(gen->pdgId()) == 13)
+           spectrum_["genPartMu"]->Fill(gen->eta(), gen->pt(), occ,w );
+       }
      }
      if( posDS && negDS ) isDS = true;
    }
@@ -299,7 +323,7 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
        TrackingParticleRef tpr(TPCollection, i);
        TrackingParticle* tp=const_cast<TrackingParticle*>(tpr.get());
        if( tp->status() < 0 || tp->charge()==0) continue; 
-       genSpectrum_->Fill( tp->eta(), tp->pt(), occ,w);
+       spectrum_["genSpectrum"]->Fill( tp->eta(), tp->pt(), occ,w);
      }
    }
 
@@ -358,7 +382,7 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
 
      if( !passesTrackCuts(*track, vsorted[0]) ) continue;
 
-     trkSpectrum_->Fill( track->eta(), track->pt(), occ,w);
+     spectrum_["trkSpectrum"]->Fill( track->eta(), track->pt(), occ,w);
      trkPerf_["Nhit"]->Fill(track->numberOfValidHits(),w); 
      trkPerf_["pt"]->Fill(track->pt(),w); 
      trkPerf_["eta"]->Fill( track->eta(),w );
@@ -387,15 +411,27 @@ RpPbTrackingAnalyzer::initHistos(const edm::Service<TFileService> & fs)
 
   events_ = fs->make<TH1F>("events","",1,0,1);
 
-  trkSpectrum_ = fs->make<TH3F>("trkSpectrum",";#eta;p_{T};occ var",
-                           etaBins_.size()-1, &etaBins_[0],
-                           ptBins_.size()-1, &ptBins_[0],
-                           occBins_.size()-1, &occBins_[0]); 
+  std::vector<std::string> spectraNames;
+  spectraNames.push_back("trkSpectrum");
+  spectraNames.push_back("genSpectrum");
+  spectraNames.push_back("genPartPi");
+  spectraNames.push_back("genPartK");
+  spectraNames.push_back("genPartp+");
+  spectraNames.push_back("genPartp-");
+  spectraNames.push_back("genPartSigma");
+  spectraNames.push_back("genPartXi");
+  spectraNames.push_back("genPartOmega");
+  spectraNames.push_back("genParte");
+  spectraNames.push_back("genPartMu");
 
-  genSpectrum_ = fs->make<TH3F>("genSpectrum",";#eta;p_{T};occ var",
+  for( std::vector<std::string>::const_iterator sname = spectraNames.begin();
+       sname != spectraNames.end(); sname++ )
+  {
+    spectrum_[*sname] = fs->make<TH3F>(sname->c_str(),";#eta;p_{T};occ var",
                            etaBins_.size()-1, &etaBins_[0],
                            ptBins_.size()-1, &ptBins_[0],
                            occBins_.size()-1, &occBins_[0]); 
+  }
 
   std::vector<double> dumBins;
   dumBins.clear(); 
