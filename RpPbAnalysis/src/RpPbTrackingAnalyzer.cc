@@ -96,6 +96,10 @@ class RpPbTrackingAnalyzer : public edm::EDAnalyzer {
       bool occByLeadingJetEt_;
       double jetEtaMax_;
 
+      bool cutByLeadingTrackPt_;
+      double leadingTrackPtMin_;
+      double leadingTrackPtMax_;
+
       bool doMC_;
       edm::InputTag genSrc_;
       bool doMCbyTP_;
@@ -129,6 +133,9 @@ occByNPixelTrk_(iConfig.getParameter<bool>("occByNPixelTrk")),
 occByNcoll_(iConfig.getParameter<bool>("occByNcoll")),
 occByLeadingJetEt_(iConfig.getParameter<bool>("occByLeadingJetEt")),
 jetEtaMax_(iConfig.getParameter<double>("jetEtaMax")),
+cutByLeadingTrackPt_(iConfig.getParameter<bool>("cutByLeadingTrackPt")),
+leadingTrackPtMin_(iConfig.getParameter<double>("leadingTrackPtMin")),
+leadingTrackPtMax_(iConfig.getParameter<double>("leadingTrackPtMax")),
 doMC_(iConfig.getParameter<bool>("doMC")),
 genSrc_(iConfig.getParameter<edm::InputTag>("genSrc")),
 doMCbyTP_(iConfig.getParameter<bool>("doMCbyTP")),
@@ -179,12 +186,24 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
    // skip events failing vertex cut
    if( fabs(vsorted[0].z()) > vertexZMax_ ) return;
 
-   // determine event multipliticy (selected tracks)
+   // determine event multipliticy and leading track pt (selected tracks)
    int multiplicity =0;
+   double leadingTrackPt = 0.0;
    reco::TrackCollection::const_iterator track;
    for(  track = tcol->begin(); track != tcol->end() ; ++track )
    { 
-     if( passesTrackCuts(*track, vsorted[0]) ) multiplicity++;
+     if( passesTrackCuts(*track, vsorted[0]) ) 
+     {
+       multiplicity++;
+       if( track->pt() > leadingTrackPt ) leadingTrackPt =  track->pt();
+     }
+   }
+
+   // skip events  by leading track pt
+   if (cutByLeadingTrackPt_ )
+   {
+      if( leadingTrackPt < leadingTrackPtMin_ ) return;
+      if( leadingTrackPt > leadingTrackPtMax_ ) return;
    }
 
    // determine weighting factor based on multiplicity
