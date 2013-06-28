@@ -17,6 +17,8 @@ class TrackCorrector
     double getZeroMultFrac();
     double getEventWeightEPOS( int M);
     double getZeroMultFracEPOS();
+    void setOption1(bool opt){ option1 = opt; return;};
+    void setOption2(bool opt){ option2 = opt; return;};
     virtual ~TrackCorrector();
 
   private:
@@ -33,6 +35,21 @@ class TrackCorrector
     TH3F * rsec;
     TH3F * reff;
     TH3F * rmul;
+
+    TH2F * rfak2D;
+    TH2F * rsec2D;
+    TH2F * rmul2D;
+
+    // when option 1 is set to true, the fake, secondary, and multiple
+    // reco corrections are taken from the 2D table that does not
+    // bin by leading Jet Et
+    bool option1;
+    // when option 2 is set to true, if the leading Jet Et of the event
+    // is less than 2.0 times the track pT, the track correction uses
+    // a leading jet et of twice the track pT instead of the actual
+    // leading jet et
+    bool option2;
+
 };
 
 const double TrackCorrector::trigEff[30] = {
@@ -63,12 +80,16 @@ const double TrackCorrector::trigFakEPOS[30] = {
 
 const double TrackCorrector::zeroMFractionEPOS = 0.00398087;
 
-TrackCorrector::TrackCorrector( std::string fileName ) 
+TrackCorrector::TrackCorrector( std::string fileName ):
+option1(false),
+option2(false) 
 {
  table = new TFile(fileName.c_str());
 }
 
-TrackCorrector::TrackCorrector()
+TrackCorrector::TrackCorrector():
+option1(false),
+option2(false)
 {
   table = new TFile("trackCorrections_HIJING_DiJet120_v0.root");
 }
@@ -99,6 +120,21 @@ TrackCorrector::load(std::string dirName)
   rmul->Divide(corr3Dmul,corr3Dsim,1,1,"B");
   rfak->Divide(corr3Dfak,corr3Drec,1,1,"B");
   rsec->Divide(corr3Dsec,corr3Drec,1,1,"B");
+
+  TH2F * corr2Dsim = (TH2F*) table->Get(Form("%s/hsim",dirName.c_str()));
+  TH2F * corr2Drec = (TH2F*) table->Get(Form("%s/hrec",dirName.c_str()));
+  TH2F * corr2Dfak = (TH2F*) table->Get(Form("%s/hfak",dirName.c_str()));
+  TH2F * corr2Dsec = (TH2F*) table->Get(Form("%s/hsec",dirName.c_str()));
+  TH2F * corr2Dmul = (TH2F*) table->Get(Form("%s/hmul",dirName.c_str()));
+
+  rfak2D = (TH2F*) corr2Dfak->Clone("rfak");
+  rmul2D = (TH2F*) corr2Dmul->Clone("rmul");
+  rsec2D = (TH2F*) corr2Dsec->Clone("rsec");
+
+  rmul2D->Divide(corr2Dmul,corr2Dsim,1,1,"B");
+  rfak2D->Divide(corr2Dfak,corr2Drec,1,1,"B");
+  rsec2D->Divide(corr2Dsec,corr2Drec,1,1,"B");
+
 }
 
   
@@ -110,6 +146,9 @@ TrackCorrector::~TrackCorrector()
 double
 TrackCorrector::getWeight(double pT, double eta, double occ ) 
 {
+  if ( option2 && pT * 2.0 < occ ) occ = pT * 2.0 ;
+
+
   double eff = reff->GetBinContent(
                   reff->GetXaxis()->FindBin(eta),
                   reff->GetYaxis()->FindBin(pT),
@@ -134,6 +173,21 @@ TrackCorrector::getWeight(double pT, double eta, double occ )
                   rmul->GetZaxis()->FindBin(occ) );
   if( mul >= 0.9999 || mul <= 0.0001) mul = 0;
 
+  if (option1) 
+  {
+      sec = rsec2D->GetBinContent(
+                  rsec2D->GetXaxis()->FindBin(eta),
+                  rsec2D->GetYaxis()->FindBin(pT));
+      if( sec >= 0.9999 || sec <= 0.0001) sec = 0;
+      fak = rfak2D->GetBinContent(
+                  rfak2D->GetXaxis()->FindBin(eta),
+                  rfak2D->GetYaxis()->FindBin(pT));
+      if( fak >= 0.9999 || fak <= 0.0001) fak = 0;
+      mul = rmul2D->GetBinContent(
+                  rmul2D->GetXaxis()->FindBin(eta),
+                  rmul2D->GetYaxis()->FindBin(pT));
+      if( mul >= 0.9999 || mul <= 0.0001) mul = 0;
+ }
 
   return (1. - fak ) * ( 1. - sec ) / eff  / (1. + mul );
 }
