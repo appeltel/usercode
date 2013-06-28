@@ -146,7 +146,7 @@ TrackCorrector::~TrackCorrector()
 double
 TrackCorrector::getWeight(double pT, double eta, double occ ) 
 {
-  if ( option2 && pT * 2.0 < occ ) occ = pT * 2.0 ;
+  if ( option2 && pT * 2.0 > occ ) occ = pT * 2.0 ;
 
 
   double eff = reff->GetBinContent(
