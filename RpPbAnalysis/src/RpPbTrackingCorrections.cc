@@ -64,7 +64,7 @@ class RpPbTrackingCorrections : public edm::EDAnalyzer {
       double bestJetEt( const TrackingParticle & tp, 
                         const std::vector<const pat::Jet *> & jets );
       void fillGenHistosWithTp( const TrackingParticle & tp, double occ, double w );
-      void fillTrkPerfHistosWithTrk( const reco::Track & track, const reco::Vertex & vertex, double w);
+      void fillTrkPerfHistosWithTrk( const reco::Track & track, const reco::Vertex & vertex, double w, bool isFake);
       int pixelLayersHit( const TrackingParticle & tp );
       int getLayerId(const PSimHit & simHit);
 
@@ -98,6 +98,7 @@ class RpPbTrackingCorrections : public edm::EDAnalyzer {
       std::vector<double> vtxWeightParameters_;
       bool doVtxReweighting_;
 
+      bool occByNull_;
       bool occByCentrality_;
       bool occByNPixelTrk_;
       bool occByJetEt_;
@@ -150,6 +151,7 @@ etaBins_(iConfig.getParameter<std::vector<double> >("etaBins")),
 occBins_(iConfig.getParameter<std::vector<double> >("occBins")),
 vtxWeightParameters_(iConfig.getParameter<std::vector<double> >("vtxWeightParameters")),
 doVtxReweighting_(iConfig.getParameter<bool>("doVtxReweighting")),
+occByNull_(iConfig.getParameter<bool>("occByNull")),
 occByCentrality_(iConfig.getParameter<bool>("occByCentrality")),
 occByNPixelTrk_(iConfig.getParameter<bool>("occByNPixelTrk")),
 occByJetEt_(iConfig.getParameter<bool>("occByJetEt")),
@@ -249,8 +251,11 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
    std::sort( vsorted.begin(), vsorted.end(), RpPbTrackingCorrections::vtxSort );
 
    // obtain event centrality
-   if (!centrality_) centrality_ = new CentralityProvider(iSetup);
-   centrality_->newEvent(iEvent,iSetup); 
+   if( ! occByNull_ )
+   {
+     if (!centrality_) centrality_ = new CentralityProvider(iSetup);
+     centrality_->newEvent(iEvent,iSetup); 
+   }
 
    // skip events with no PV, this should not happen
    if( vsorted.size() == 0) return;
@@ -272,6 +277,7 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
    double occ = 0.;  
    if( occByCentrality_) occ = (double) centrality_->getBin(); 
    if( occByNPixelTrk_) occ = centrality_->raw()->NpixelTracks();   
+   if( occByNull_) occ = 50.0;
    double leadJetEt = 0.;
    if ( ! sortedJets.empty() ) leadJetEt = sortedJets[0]->pt();
    if( occByLeadingJetEt_ ) occ = leadJetEt;
@@ -298,7 +304,6 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
         if( cut ) continue;
      } 
 
-     if( fillTrkPerfHistos_ ) fillTrkPerfHistosWithTrk( *tr, vsorted[0], w) ;
 
      // get Et of closest jet to track, or 0 if not in a cone, 
      // if jet occupancy is used
@@ -308,6 +313,7 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
      trkCorr2D_["hrec"]->Fill(tr->eta(), tr->pt(), w);
 
      // look for match to simulated particle, use first match if it exists
+     bool isFake = true;
      std::vector<std::pair<TrackingParticleRef, double> > tp;
      const TrackingParticle *mtp=0;
      if(recSimColl.find(track) != recSimColl.end())
@@ -316,12 +322,14 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
        mtp = tp.begin()->first.get();  
        if( mtp->status() < 0) trkCorr3D_["hsec3D"]->Fill(tr->eta(), tr->pt(), occ, w);     
        if( mtp->status() < 0) trkCorr2D_["hsec"]->Fill(tr->eta(), tr->pt(), w);     
+       isFake = false;
      }
      else
      {
        trkCorr3D_["hfak3D"]->Fill(tr->eta(), tr->pt(), occ, w);
        trkCorr2D_["hfak"]->Fill(tr->eta(), tr->pt(), w);
      }
+     if( fillTrkPerfHistos_ ) fillTrkPerfHistosWithTrk( *tr, vsorted[0], w, isFake) ;
 
    }
 
@@ -480,15 +488,39 @@ RpPbTrackingCorrections::initHistos(const edm::Service<TFileService> & fs)
                            etaBins_.size()-1, &etaBins_[0],
                            ptBins_.size()-1, &ptBins_[0],
                            dumBins.size()-1, &dumBins[0]);
+  trkPerf3D_["Nhit3Drec"] = fs->make<TH3F>("trkNhit3Drec", "Tracks by Number of Valid Hits;N hits",    
+                           etaBins_.size()-1, &etaBins_[0],
+                           ptBins_.size()-1, &ptBins_[0],
+                           dumBins.size()-1, &dumBins[0]);
+  trkPerf3D_["Nhit3Dfak"] = fs->make<TH3F>("trkNhit3Dfak", "Tracks by Number of Valid Hits;N hits",    
+                           etaBins_.size()-1, &etaBins_[0],
+                           ptBins_.size()-1, &ptBins_[0],
+                           dumBins.size()-1, &dumBins[0]);
   dumBins.clear();  
   for( double i = -3.15; i<3.151; i += 6.30/50.) dumBins.push_back(i);
   trkPerf3D_["phi3D"] = fs->make<TH3F>("trkPhi3D", "Track Azimuthal Distribution;#phi",
                            etaBins_.size()-1, &etaBins_[0],
                            ptBins_.size()-1, &ptBins_[0],
                            dumBins.size()-1, &dumBins[0]);
+  trkPerf3D_["phi3Drec"] = fs->make<TH3F>("trkPhi3Drec", "Track Azimuthal Distribution;#phi",
+                           etaBins_.size()-1, &etaBins_[0],
+                           ptBins_.size()-1, &ptBins_[0],
+                           dumBins.size()-1, &dumBins[0]);
+  trkPerf3D_["phi3Dfak"] = fs->make<TH3F>("trkPhi3Dfak", "Track Azimuthal Distribution;#phi",
+                           etaBins_.size()-1, &etaBins_[0],
+                           ptBins_.size()-1, &ptBins_[0],
+                           dumBins.size()-1, &dumBins[0]);
   dumBins.clear();    
-  for( double i = 0.; i<6.01; i += 6./60.) dumBins.push_back(i);
+  for( double i = 0.; i<20.01; i += 20./80.) dumBins.push_back(i);
   trkPerf3D_["chi23D"] = fs->make<TH3F>("trkChi23D", "Track Normalized #chi^{2};#chi^{2}/n.d.o.f",
+                           etaBins_.size()-1, &etaBins_[0],
+                           ptBins_.size()-1, &ptBins_[0],
+                           dumBins.size()-1, &dumBins[0]);
+  trkPerf3D_["chi23Drec"] = fs->make<TH3F>("trkChi23Drec", "Track Normalized #chi^{2};#chi^{2}/n.d.o.f",
+                           etaBins_.size()-1, &etaBins_[0],
+                           ptBins_.size()-1, &ptBins_[0],
+                           dumBins.size()-1, &dumBins[0]);
+  trkPerf3D_["chi23Dfak"] = fs->make<TH3F>("trkChi23Dfak", "Track Normalized #chi^{2};#chi^{2}/n.d.o.f",
                            etaBins_.size()-1, &etaBins_[0],
                            ptBins_.size()-1, &ptBins_[0],
                            dumBins.size()-1, &dumBins[0]);
@@ -498,8 +530,16 @@ RpPbTrackingCorrections::initHistos(const edm::Service<TFileService> & fs)
                            etaBins_.size()-1, &etaBins_[0],
                            ptBins_.size()-1, &ptBins_[0],
                            dumBins.size()-1, &dumBins[0]);
+  trkPerf3D_["pterr3Drec"] = fs->make<TH3F>("trkPterr3Drec", "Track p_{T} error;#delta p_{T} / p_{T}",
+                           etaBins_.size()-1, &etaBins_[0],
+                           ptBins_.size()-1, &ptBins_[0],
+                           dumBins.size()-1, &dumBins[0]);
+  trkPerf3D_["pterr3Dfak"] = fs->make<TH3F>("trkPterr3Dfak", "Track p_{T} error;#delta p_{T} / p_{T}",
+                           etaBins_.size()-1, &etaBins_[0],
+                           ptBins_.size()-1, &ptBins_[0],
+                           dumBins.size()-1, &dumBins[0]);
   dumBins.clear();
-  for( double i = -8.; i<8.01; i += 16./50.) dumBins.push_back(i);
+  for( double i = -20.; i<20.01; i += 40./100.) dumBins.push_back(i);
   trkPerf3D_["dxyErr3D"] = fs->make<TH3F>("trkDxyErr3D", "Transverse DCA Significance;dxy / #sigma_{dxy}",
                            etaBins_.size()-1, &etaBins_[0],
                            ptBins_.size()-1, &ptBins_[0],
@@ -508,6 +548,24 @@ RpPbTrackingCorrections::initHistos(const edm::Service<TFileService> & fs)
                            etaBins_.size()-1, &etaBins_[0],
                            ptBins_.size()-1, &ptBins_[0],
                            dumBins.size()-1, &dumBins[0]);
+  trkPerf3D_["dxyErr3Drec"] = fs->make<TH3F>("trkDxyErr3Drec", "Transverse DCA Significance;dxy / #sigma_{dxy}",
+                           etaBins_.size()-1, &etaBins_[0],
+                           ptBins_.size()-1, &ptBins_[0],
+                           dumBins.size()-1, &dumBins[0]);
+  trkPerf3D_["dzErr3Drec"] = fs->make<TH3F>("trkDzErr3Drec", "Longitudinal DCA Significance;dz / #sigma_{dz}",
+                           etaBins_.size()-1, &etaBins_[0],
+                           ptBins_.size()-1, &ptBins_[0],
+                           dumBins.size()-1, &dumBins[0]);
+  trkPerf3D_["dxyErr3Dfak"] = fs->make<TH3F>("trkDxyErr3Dfak", "Transverse DCA Significance;dxy / #sigma_{dxy}",
+                           etaBins_.size()-1, &etaBins_[0],
+                           ptBins_.size()-1, &ptBins_[0],
+                           dumBins.size()-1, &dumBins[0]);
+  trkPerf3D_["dzErr3Dfak"] = fs->make<TH3F>("trkDzErr3Dfak", "Longitudinal DCA Significance;dz / #sigma_{dz}",
+                           etaBins_.size()-1, &etaBins_[0],
+                           ptBins_.size()-1, &ptBins_[0],
+                           dumBins.size()-1, &dumBins[0]);
+
+
 
   vtxZ_ = fs->make<TH1F>("vtxZ","Vertex z position",100,-30,30);
   leadJetEt_ = fs->make<TH1F>("leadJetEt","Vertex z position",1000,0,1000);
@@ -691,7 +749,8 @@ RpPbTrackingCorrections::getLayerId(const PSimHit & simHit)
 }
 
 void
-RpPbTrackingCorrections::fillTrkPerfHistosWithTrk( const reco::Track & track, const reco::Vertex & vertex, double w )
+RpPbTrackingCorrections::fillTrkPerfHistosWithTrk( const reco::Track & track, const reco::Vertex & vertex, 
+                                                   double w, bool isFake )
 {
    math::XYZPoint vtxPoint(0.0,0.0,0.0);
    double vzErr =0.0, vxErr=0.0, vyErr=0.0;
@@ -710,6 +769,22 @@ RpPbTrackingCorrections::fillTrkPerfHistosWithTrk( const reco::Track & track, co
    trkPerf3D_["dzErr3D"]->Fill(track.eta(), track.pt(), dz/dzsigma, w);
    trkPerf3D_["chi23D"]->Fill(track.eta(), track.pt(), track.normalizedChi2(), w);
    trkPerf3D_["pterr3D"]->Fill(track.eta(), track.pt(), track.ptError() / track.pt(), w );
+   if( isFake ) 
+   {
+     trkPerf3D_["Nhit3Dfak"]->Fill(track.eta(), track.pt(), track.numberOfValidHits(), w);
+     trkPerf3D_["phi3Dfak"]->Fill(track.eta(), track.pt(), track.phi(),w );
+     trkPerf3D_["dxyErr3Dfak"]->Fill(track.eta(), track.pt(), dxy/dxysigma, w);
+     trkPerf3D_["dzErr3Dfak"]->Fill(track.eta(), track.pt(), dz/dzsigma, w);
+     trkPerf3D_["chi23Dfak"]->Fill(track.eta(), track.pt(), track.normalizedChi2(), w);
+     trkPerf3D_["pterr3Dfak"]->Fill(track.eta(), track.pt(), track.ptError() / track.pt(), w );
+   } else {
+     trkPerf3D_["Nhit3Drec"]->Fill(track.eta(), track.pt(), track.numberOfValidHits(), w);
+     trkPerf3D_["phi3Drec"]->Fill(track.eta(), track.pt(), track.phi(),w );
+     trkPerf3D_["dxyErr3Drec"]->Fill(track.eta(), track.pt(), dxy/dxysigma, w);
+     trkPerf3D_["dzErr3Drec"]->Fill(track.eta(), track.pt(), dz/dzsigma, w);
+     trkPerf3D_["chi23Drec"]->Fill(track.eta(), track.pt(), track.normalizedChi2(), w);
+     trkPerf3D_["pterr3Drec"]->Fill(track.eta(), track.pt(), track.ptError() / track.pt(), w );
+   }
 }
 
 DEFINE_FWK_MODULE(RpPbTrackingCorrections);
