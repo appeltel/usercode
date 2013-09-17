@@ -1,3 +1,6 @@
+#ifndef TRACKCORRECTOR_C
+#define TRACKCORRECTOR_C
+
 #include <string>
 #include <iostream>
 
@@ -218,3 +221,4 @@ TrackCorrector::getZeroMultFracEPOS()
   return zeroMFractionEPOS;
 }
 
+#endif /* TRACKCORRECTOR_C */
