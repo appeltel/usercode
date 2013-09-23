@@ -20,6 +20,8 @@ class TrackCorrector
     double getZeroMultFrac();
     double getEventWeightEPOS( int M);
     double getZeroMultFracEPOS();
+    double getEventWeightPP( int M);
+    double getZeroMultFracPP();
     void setOption1(bool opt){ option1 = opt; return;};
     void setOption2(bool opt){ option2 = opt; return;};
     virtual ~TrackCorrector();
@@ -32,6 +34,9 @@ class TrackCorrector
     static const double trigEffEPOS[30];
     static const double trigFakEPOS[30];
     static const double zeroMFractionEPOS;
+    static const double trigPP[30];
+    static const double trigPP[30];
+    static const double zeroMFractionPP;
 
     TFile * table;
     TH3F * rfak;
@@ -82,6 +87,18 @@ const double TrackCorrector::trigFakEPOS[30] = {
         0.000221613, 0.000137669, 0.00011212, 2.8529e-05, 0.000143349, 5.76037e-05, 0.0};
 
 const double TrackCorrector::zeroMFractionEPOS = 0.00398087;
+
+const double TrackCorrector::trigEffPP[30] = {
+        0.0, 0.0298002, 0.460676, 0.703551, 0.814279, 0.87403, 0.903672, 
+        0.922879, 0.937589, 0.947, 0.95408, 0.96028, 0.964092, 0.968984, 0.96846, 
+        0.973189, 0.97173, 0.974033, 0.976373, 0.97967, 0.980391, 0.980611, 0.984365, 
+        0.984984, 0.986428, 0.987892, 0.989266, 0.990197, 0.990234, 0.99122};
+
+const double TrackCorrector::trigFakPP[30] = {
+        0, 0.0403768, 0.0425721, 0.0281602, 0.0213568, 0.014028, 0.00917829, 
+        0.006496, 0.00526027, 0.00326111, 0.00248634, 0.00191384, 0.00197023, 0.00130776, 0.00113104, 
+        0.00117096, 0.00077007, 0.000614838, 0.00073497, 0.000776639, 0.000326451, 0.000174948, 0.000553761, 
+        0.000390739, 0.000314994, 0.00033723, 0.000117925, 0.000247433, 0.000262916, 0.00027674 };
 
 TrackCorrector::TrackCorrector( std::string fileName ):
 option1(false),
@@ -219,6 +236,19 @@ double
 TrackCorrector::getZeroMultFracEPOS()
 {
   return zeroMFractionEPOS;
+}
+
+double
+TrackCorrector::getEventWeightPP( int M )
+{
+  if( M<1 || M>29) return 1;
+  return (1. - trigFakPP[M] ) / trigEffPP[M];
+}
+
+double
+TrackCorrector::getZeroMultFracPP()
+{
+  return zeroMFractionPP;
 }
 
 #endif /* TRACKCORRECTOR_C */
