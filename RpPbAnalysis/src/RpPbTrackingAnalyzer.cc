@@ -66,7 +66,9 @@ class RpPbTrackingAnalyzer : public edm::EDAnalyzer {
       std::map<std::string,TH1F*> vtxPerf_;
       std::map<std::string,TH2F*> vtxPerf2D_;
       
-      std::map<std::string,TH3F*> spectrum_; 
+      TH3F* trkSpectrum_; 
+      TH3F* trkSpectrumDS_; 
+      TH3F* genSpectrum_; 
 
       TH1F* events_;
 
@@ -92,6 +94,7 @@ class RpPbTrackingAnalyzer : public edm::EDAnalyzer {
 
       bool occByCentrality_;
       bool occByNPixelTrk_;
+      bool occByMultiplicity_;
       bool occByNcoll_;
       bool occByLeadingJetEt_;
       double jetEtaMax_;
@@ -99,8 +102,13 @@ class RpPbTrackingAnalyzer : public edm::EDAnalyzer {
       bool cutByLeadingTrackPt_;
       double leadingTrackPtMin_;
       double leadingTrackPtMax_;
+      double leadingTrackEtaMin_;
+      double leadingTrackEtaMax_;
+
+      bool doPerformance_;
 
       bool doMC_;
+      bool isHIMC_;
       edm::InputTag genSrc_;
       bool doMCbyTP_;
       edm::InputTag tpSrc_;
@@ -130,13 +138,18 @@ etaBins_(iConfig.getParameter<std::vector<double> >("etaBins")),
 occBins_(iConfig.getParameter<std::vector<double> >("occBins")),
 occByCentrality_(iConfig.getParameter<bool>("occByCentrality")),
 occByNPixelTrk_(iConfig.getParameter<bool>("occByNPixelTrk")),
+occByMultiplicity_(iConfig.getParameter<bool>("occByMultiplicity")),
 occByNcoll_(iConfig.getParameter<bool>("occByNcoll")),
 occByLeadingJetEt_(iConfig.getParameter<bool>("occByLeadingJetEt")),
 jetEtaMax_(iConfig.getParameter<double>("jetEtaMax")),
 cutByLeadingTrackPt_(iConfig.getParameter<bool>("cutByLeadingTrackPt")),
 leadingTrackPtMin_(iConfig.getParameter<double>("leadingTrackPtMin")),
 leadingTrackPtMax_(iConfig.getParameter<double>("leadingTrackPtMax")),
+leadingTrackEtaMin_(iConfig.getParameter<double>("leadingTrackEtaMin")),
+leadingTrackEtaMax_(iConfig.getParameter<double>("leadingTrackEtaMax")),
+doPerformance_(iConfig.getParameter<bool>("doPerformance")),
 doMC_(iConfig.getParameter<bool>("doMC")),
+isHIMC_(iConfig.getParameter<bool>("isHIMC")),
 genSrc_(iConfig.getParameter<edm::InputTag>("genSrc")),
 doMCbyTP_(iConfig.getParameter<bool>("doMCbyTP")),
 tpSrc_(iConfig.getParameter<edm::InputTag>("tpSrc")),
@@ -182,29 +195,32 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
    std::sort( vsorted.begin(), vsorted.end(), RpPbTrackingAnalyzer::vtxSort );
  
    // skip events with no PV, this should not happen
-   if( vsorted.size() == 0) return;
+   if( vsorted.size() == 0) return; 
    // skip events failing vertex cut
-   if( fabs(vsorted[0].z()) > vertexZMax_ ) return;
+   if( fabs(vsorted[0].z()) > vertexZMax_ ) return; 
+
+   evtPerf_["evtRaw"]->Fill(0.5);
 
    // determine event multipliticy and leading track pt (selected tracks)
    int multiplicity =0;
    double leadingTrackPt = 0.0;
+   double leadingTrackPtGlobal = 0.0;
+   // force track cuts for selection
+   bool realApplyCuts = applyCuts_;
+   applyCuts_ = true;
    reco::TrackCollection::const_iterator track;
    for(  track = tcol->begin(); track != tcol->end() ; ++track )
    { 
      if( passesTrackCuts(*track, vsorted[0]) ) 
      {
        multiplicity++;
-       if( track->pt() > leadingTrackPt ) leadingTrackPt =  track->pt();
+       if( track->pt() > leadingTrackPt ) leadingTrackPtGlobal =  track->pt();
+       if( track->pt() > leadingTrackPt && track->eta() < leadingTrackEtaMax_
+           && track->eta() > leadingTrackEtaMin_  ) 
+         leadingTrackPt =  track->pt();
      }
    }
-
-   // skip events  by leading track pt
-   if (cutByLeadingTrackPt_ )
-   {
-      if( leadingTrackPt < leadingTrackPtMin_ ) return;
-      if( leadingTrackPt > leadingTrackPtMax_ ) return;
-   }
+   applyCuts_ = realApplyCuts;
 
    // determine weighting factor based on multiplicity
    // if weighting is to be performed
@@ -220,6 +236,17 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
    // do vertex reweighting of each event if desired
    if ( doVtxReweighting_ )
      w *= vtxWeightFunc_->Eval(vsorted[0].z());
+
+
+   evtPerf_["eventsLeadTrack"]->Fill( leadingTrackPtGlobal, w); 
+   evtPerf_["eventsLeadTrackEta"]->Fill( leadingTrackPt, w); 
+
+   // skip events  by leading track pt
+   if (cutByLeadingTrackPt_ )
+   {
+      if( leadingTrackPt < leadingTrackPtMin_ ) return;
+      if( leadingTrackPt > leadingTrackPtMax_ ) return;
+   }
 
    // obtain jets, if we are considering them
    Handle<std::vector<pat::Jet> > jets;
@@ -253,6 +280,7 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
    double occ = 0.;  
    if( occByCentrality_) occ = (double) centrality_->getBin();   
    if( occByNPixelTrk_) occ = centrality_->raw()->NpixelTracks();   
+   if( occByMultiplicity_ ) occ = multiplicity;
 
    double leadJetEt = 0.;
    if ( ! sortedJets.empty() ) leadJetEt = sortedJets[0]->pt();
@@ -267,8 +295,9 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
    {
      Handle<edm::HepMCProduct> hepmc;
      iEvent.getByLabel("generator",hepmc);
-     int ncoll = 0; float b = 999.;
-     if( hepmc->GetEvent()->heavy_ion() )
+     int ncoll = 2;
+     float b = 0;
+     if( isHIMC_ )
      {
        ncoll = hepmc->GetEvent()->heavy_ion()->Ncoll();
        b = hepmc->GetEvent()->heavy_ion()->impact_parameter();
@@ -286,11 +315,10 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
 
      Handle<reco::GenParticleCollection> gcol;
      iEvent.getByLabel(genSrc_, gcol);
-     reco::GenParticleCollection::const_iterator gen;
-     for( gen = gcol->begin(); gen != gcol->end(); gen++ )
+     for( const auto & gen : * gcol )
      {
        // see if genpartice counts for DS
-       HepPDT::ParticleID particleID(gen->pdgId());
+       HepPDT::ParticleID particleID(gen.pdgId());
        if (particleID.isValid())
        {
          ParticleData const * particleData = particleDataTable_->particle(particleID);
@@ -299,35 +327,14 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
            double ctau =  particleDataTable_->particle(particleID)->lifetime();
            if ( ctau  > 1e-18 || ctau == 0.0 )
            {
-             if( gen->energy() > 3.0 && gen->eta() > 3.0 && gen->eta() < 5.0 ) posDS = true;
-             if( gen->energy() > 3.0 && gen->eta() < -3.0 && gen->eta() > -5.0 ) negDS = true;
+             if( gen.energy() > 3.0 && gen.eta() > 3.0 && gen.eta() < 5.0 ) posDS = true;
+             if( gen.energy() > 3.0 && gen.eta() < -3.0 && gen.eta() > -5.0 ) negDS = true;
            }
          }
        }
        // fill gen spectrum with genParticles
-       if( gen->status() == 1 && gen->charge() != 0 && !doMCbyTP_ )
-       {
-
-         spectrum_["genSpectrum"]->Fill( gen->eta(), gen->pt(), occ,w );
-         if( fabs(gen->pdgId()) == 211)
-           spectrum_["genPartPi"]->Fill(gen->eta(), gen->pt(), occ,w );
-         if( fabs(gen->pdgId()) == 321)
-           spectrum_["genPartK"]->Fill(gen->eta(), gen->pt(), occ,w );
-         if( gen->pdgId() == 2212)
-           spectrum_["genPartp+"]->Fill(gen->eta(), gen->pt(), occ,w );
-         if( gen->pdgId() == -2212)
-           spectrum_["genPartp-"]->Fill(gen->eta(), gen->pt(), occ,w );
-         if( fabs(gen->pdgId()) == 3222)
-           spectrum_["genPartSigma"]->Fill(gen->eta(), gen->pt(), occ,w );
-         if( fabs(gen->pdgId()) == 3312)
-           spectrum_["genPartXi"]->Fill(gen->eta(), gen->pt(), occ,w );
-         if( fabs(gen->pdgId()) == 3334)
-           spectrum_["genPartOmega"]->Fill(gen->eta(), gen->pt(), occ,w );
-         if( fabs(gen->pdgId()) == 11)
-           spectrum_["genParte"]->Fill(gen->eta(), gen->pt(), occ,w );
-         if( fabs(gen->pdgId()) == 13)
-           spectrum_["genPartMu"]->Fill(gen->eta(), gen->pt(), occ,w );
-       }
+       if( gen.status() == 1 && gen.charge() != 0 && !doMCbyTP_ )
+         genSpectrum_->Fill( gen.eta(), gen.pt(), occ,w );
      }
      if( posDS && negDS ) isDS = true;
    }
@@ -342,26 +349,26 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
        TrackingParticleRef tpr(TPCollection, i);
        TrackingParticle* tp=const_cast<TrackingParticle*>(tpr.get());
        if( tp->status() < 0 || tp->charge()==0) continue; 
-       spectrum_["genSpectrum"]->Fill( tp->eta(), tp->pt(), occ,w);
+       genSpectrum_->Fill( tp->eta(), tp->pt(), occ,w);
      }
    }
 
    // fill event histos relating to DS 
    evtPerf_["multiplicity"]->Fill(multiplicity,w);
+   evtPerf2D_["hevtEM"]->Fill(multiplicity,occ,w);
    if( isDS) evtPerf_["multDS"]->Fill(multiplicity,w);
    if( !isDS) evtPerf_["multNonDS"]->Fill(multiplicity,w);
-
+   if( isDS) evtPerf_["eventsLeadTrackDS"]->Fill( leadingTrackPtGlobal, w);
 
    // fill vertex performance histograms
    int vcount = 0; 
-   std::vector<reco::Vertex>::const_iterator vi; 
-   for( vi = vsorted.begin(); vi != vsorted.end() ; vi++ )
+   for( const auto & vi :  vsorted )
    {
-     vtxPerf_["Ntrk"]->Fill(vi->tracksSize(),w);
-     vtxPerf_["x"]->Fill(vi->x(),w);
-     vtxPerf_["y"]->Fill(vi->y(),w);
-     vtxPerf_["z"]->Fill(vi->z(),w);
-     vtxPerf2D_["Ntrk2D"]->Fill(vcount,vi->tracksSize(),w);
+     vtxPerf_["Ntrk"]->Fill(vi.tracksSize(),w);
+     vtxPerf_["x"]->Fill(vi.x(),w);
+     vtxPerf_["y"]->Fill(vi.y(),w);
+     vtxPerf_["z"]->Fill(vi.z(),w);
+     vtxPerf2D_["Ntrk2D"]->Fill(vcount,vi.tracksSize(),w);
      vcount++;
    }
    // comparisons between first and additional primary vertices
@@ -391,35 +398,38 @@ RpPbTrackingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& i
   
    // loop through reconstructed tracks and fill
    // track spectrum and performance histograms
-   for( track = tcol->begin(); track != tcol->end(); track++ )
+   for( const auto & track : * tcol )
    {
      double dxy=0.0, dz=0.0, dxysigma=0.0, dzsigma=0.0;
-     dxy = track->dxy(vtxPoint);
-     dz = track->dz(vtxPoint);
-     dxysigma = sqrt(track->d0Error()*track->d0Error()+vxErr*vyErr);
-     dzsigma = sqrt(track->dzError()*track->dzError()+vzErr*vzErr);
+     dxy = track.dxy(vtxPoint);
+     dz = track.dz(vtxPoint);
+     dxysigma = sqrt(track.d0Error()*track.d0Error()+vxErr*vyErr);
+     dzsigma = sqrt(track.dzError()*track.dzError()+vzErr*vzErr);
 
-     if( !passesTrackCuts(*track, vsorted[0]) ) continue;
+     if( !passesTrackCuts(track, vsorted[0]) ) continue;
 
-     spectrum_["trkSpectrum"]->Fill( track->eta(), track->pt(), occ,w);
-     trkPerf_["Nhit"]->Fill(track->numberOfValidHits(),w); 
-     trkPerf_["pt"]->Fill(track->pt(),w); 
-     trkPerf_["eta"]->Fill( track->eta(),w );
-     trkPerf2D_["etaphi"]->Fill( track->eta(), track->phi(),w );
-     trkPerf_["ptHigh"]->Fill(track->pt(),w); 
-     trkPerf_["phi"]->Fill(track->phi(),w); 
-     trkPerf_["dxyErr"]->Fill(dxy/dxysigma,w); 
-     trkPerf_["dzErr"]->Fill(dz/dzsigma,w); 
-     trkPerf_["chi2"]->Fill(track->normalizedChi2(),w);
-     trkPerf_["pterr"]->Fill(track->ptError() / track->pt(),w );
-     trkPerf2D_["etavz"]->Fill( vtxPoint.z(), track->eta(),w );
-     trkPerf3D_["Nhit3D"]->Fill(track->eta(), track->pt(), track->numberOfValidHits(),w);
-     trkPerf3D_["phi3D"]->Fill(track->eta(), track->pt(), track->phi(),w);
-     trkPerf3D_["dxyErr3D"]->Fill(track->eta(), track->pt(), dxy/dxysigma,w);
-     trkPerf3D_["dzErr3D"]->Fill(track->eta(), track->pt(), dz/dzsigma,w);
-     trkPerf3D_["chi23D"]->Fill(track->eta(), track->pt(), track->normalizedChi2(),w);
-     trkPerf3D_["pterr3D"]->Fill(track->eta(), track->pt(), track->ptError() / track->pt(),w );
-
+     trkSpectrum_->Fill( track.eta(), track.pt(), occ,w);
+     if( isDS  ) trkSpectrumDS_->Fill( track.eta(), track.pt(), occ,w);
+     if( doPerformance_)
+     {
+       trkPerf_["Nhit"]->Fill(track.numberOfValidHits(),w); 
+       trkPerf_["pt"]->Fill(track.pt(),w); 
+       trkPerf_["eta"]->Fill( track.eta(),w );
+       trkPerf2D_["etaphi"]->Fill( track.eta(), track.phi(),w );
+       trkPerf_["ptHigh"]->Fill(track.pt(),w); 
+       trkPerf_["phi"]->Fill(track.phi(),w); 
+       trkPerf_["dxyErr"]->Fill(dxy/dxysigma,w); 
+       trkPerf_["dzErr"]->Fill(dz/dzsigma,w); 
+       trkPerf_["chi2"]->Fill(track.normalizedChi2(),w);
+       trkPerf_["pterr"]->Fill(track.ptError() / track.pt(),w );
+       trkPerf2D_["etavz"]->Fill( vtxPoint.z(), track.eta(),w );
+       trkPerf3D_["Nhit3D"]->Fill(track.eta(), track.pt(), track.numberOfValidHits(),w);
+       trkPerf3D_["phi3D"]->Fill(track.eta(), track.pt(), track.phi(),w);
+       trkPerf3D_["dxyErr3D"]->Fill(track.eta(), track.pt(), dxy/dxysigma,w);
+       trkPerf3D_["dzErr3D"]->Fill(track.eta(), track.pt(), dz/dzsigma,w);
+       trkPerf3D_["chi23D"]->Fill(track.eta(), track.pt(), track.normalizedChi2(),w);
+       trkPerf3D_["pterr3D"]->Fill(track.eta(), track.pt(), track.ptError() / track.pt(),w );
+     }
    }
 }
 
@@ -430,27 +440,20 @@ RpPbTrackingAnalyzer::initHistos(const edm::Service<TFileService> & fs)
 
   events_ = fs->make<TH1F>("events","",1,0,1);
 
-  std::vector<std::string> spectraNames;
-  spectraNames.push_back("trkSpectrum");
-  spectraNames.push_back("genSpectrum");
-  spectraNames.push_back("genPartPi");
-  spectraNames.push_back("genPartK");
-  spectraNames.push_back("genPartp+");
-  spectraNames.push_back("genPartp-");
-  spectraNames.push_back("genPartSigma");
-  spectraNames.push_back("genPartXi");
-  spectraNames.push_back("genPartOmega");
-  spectraNames.push_back("genParte");
-  spectraNames.push_back("genPartMu");
-
-  for( std::vector<std::string>::const_iterator sname = spectraNames.begin();
-       sname != spectraNames.end(); sname++ )
-  {
-    spectrum_[*sname] = fs->make<TH3F>(sname->c_str(),";#eta;p_{T};occ var",
+  trkSpectrum_ = fs->make<TH3F>("trkSpectrum",";#eta;p_{T};occ var",
                            etaBins_.size()-1, &etaBins_[0],
                            ptBins_.size()-1, &ptBins_[0],
                            occBins_.size()-1, &occBins_[0]); 
-  }
+
+  trkSpectrumDS_ = fs->make<TH3F>("trkSpectrumDS",";#eta;p_{T};occ var",
+                           etaBins_.size()-1, &etaBins_[0],
+                           ptBins_.size()-1, &ptBins_[0],
+                           occBins_.size()-1, &occBins_[0]); 
+
+  genSpectrum_ = fs->make<TH3F>("genSpectrum",";#eta;p_{T};occ var",
+                           etaBins_.size()-1, &etaBins_[0],
+                           ptBins_.size()-1, &ptBins_[0],
+                           occBins_.size()-1, &occBins_[0]); 
 
   std::vector<double> dumBins;
   dumBins.clear(); 
@@ -460,13 +463,13 @@ RpPbTrackingAnalyzer::initHistos(const edm::Service<TFileService> & fs)
                            ptBins_.size()-1, &ptBins_[0],
                            dumBins.size()-1, &dumBins[0]);
   dumBins.clear();  
-  for( double i = -3.15; i<3.151; i += 6.30/100.) dumBins.push_back(i);
+  for( double i = -3.15; i<3.151; i += 6.30/50.) dumBins.push_back(i);
   trkPerf3D_["phi3D"] = fs->make<TH3F>("trkPhi3D", "Track Azimuthal Distribution;#phi",
                            etaBins_.size()-1, &etaBins_[0],
                            ptBins_.size()-1, &ptBins_[0],
                            dumBins.size()-1, &dumBins[0]);
   dumBins.clear();    
-  for( double i = 0.; i<6.01; i += 6./60.) dumBins.push_back(i);
+  for( double i = 0.; i<20.01; i += 20./80.) dumBins.push_back(i);
   trkPerf3D_["chi23D"] = fs->make<TH3F>("trkChi23D", "Track Normalized #chi^{2};#chi^{2}/n.d.o.f",
                            etaBins_.size()-1, &etaBins_[0],
                            ptBins_.size()-1, &ptBins_[0],
@@ -478,7 +481,7 @@ RpPbTrackingAnalyzer::initHistos(const edm::Service<TFileService> & fs)
                            ptBins_.size()-1, &ptBins_[0],
                            dumBins.size()-1, &dumBins[0]);
   dumBins.clear();
-  for( double i = -8.; i<8.01; i += 16./100.) dumBins.push_back(i);
+  for( double i = -20.; i<20.01; i += 40./100.) dumBins.push_back(i);
   trkPerf3D_["dxyErr3D"] = fs->make<TH3F>("trkDxyErr3D", "Transverse DCA Significance;dxy / #sigma_{dxy}",
                            etaBins_.size()-1, &etaBins_[0],
                            ptBins_.size()-1, &ptBins_[0],
@@ -490,6 +493,7 @@ RpPbTrackingAnalyzer::initHistos(const edm::Service<TFileService> & fs)
 
 
   evtPerf_["Ntrk"] = fs->make<TH1F>("evtNtrk","Tracks per event",100,0,400);
+  evtPerf_["evtRaw"] = fs->make<TH1F>("evtRaw","Raw number of events",1,0,1);
   evtPerf_["Nvtx"] = fs->make<TH1F>("evtNvtx","Primary Vertices per event",10,0,10);
   evtPerf_["centrality"] = fs->make<TH1F>("centrality","Event centrality bin",100,0,100);
   evtPerf_["ncoll"] = fs->make<TH1F>("ncoll","Event Ncoll from Generator",50,0,50);
@@ -502,12 +506,26 @@ RpPbTrackingAnalyzer::initHistos(const edm::Service<TFileService> & fs)
   evtPerf_["multDS"] = fs->make<TH1F>("multDS","DS Event Multiplicity (selected tracks)",500,0,500);
   evtPerf_["multNonDS"] = fs->make<TH1F>("multNonDS","Non-DS Event Multiplicity (selected tracks)",500,0,500);
 
+  evtPerf_["eventsLeadTrack"] = fs->make<TH1F>("eventsLeadTrack", "Number of events by leading track pt",
+                                               100,0,200);
+  evtPerf_["eventsLeadTrackEta"] = fs->make<TH1F>("eventsLeadTrackEta", "Number of events by leading track pt",
+                                               100,0,200);
+  evtPerf_["eventsLeadTrackDS"] = fs->make<TH1F>("eventsLeadTrackDS", "Number of events by leading track pt",
+                                               100,0,200);
+
   evtPerf2D_["ncollCent"] = fs->make<TH2F>("ncollCent","Ncoll versus Centrality",
                                 50,0,50,100,0,100);
   evtPerf2D_["bCent"] = fs->make<TH2F>("bCent","Impact Parameter versus Centrality",
                                 100,0,20,100,0,100);
   evtPerf2D_["bncoll"] = fs->make<TH2F>("bncoll","Impact Parameter versus Ncoll",
                                 100,0,20,50,0,50);
+
+  std::vector<double> multBins;
+  multBins.clear();
+  for( double i = 0.; i<600.; i += 10.) multBins.push_back(i);
+     evtPerf2D_["hevtEM"] = fs->make<TH2F>("hevtEM",";mult;occ var",
+                           multBins.size()-1, &multBins[0],
+                           occBins_.size()-1, &occBins_[0]);
 
   vtxPerf_["Ntrk"] = fs->make<TH1F>("vtxNtrk","Tracks per vertex",50,0,200);
   vtxPerf_["x"] = fs->make<TH1F>("vtxX","Vertex x position",1000,-1,1);

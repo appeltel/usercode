@@ -98,7 +98,6 @@ class RpPbTrackingCorrections : public edm::EDAnalyzer {
       std::vector<double> vtxWeightParameters_;
       bool doVtxReweighting_;
 
-      bool occByNull_;
       bool occByCentrality_;
       bool occByNPixelTrk_;
       bool occByJetEt_;
@@ -122,6 +121,8 @@ class RpPbTrackingCorrections : public edm::EDAnalyzer {
       double jetEtMin_;
       double jetEtMax_;
 
+      int chargeCut_;
+
       bool applyTrackCuts_;
       std::string qualityString_;
       double dxyErrMax_;
@@ -130,7 +131,19 @@ class RpPbTrackingCorrections : public edm::EDAnalyzer {
 
       bool fillGenHistos_;
       bool fillTrkPerfHistos_;
+      bool fillTrkPerfHistosRF_;
       bool doMomRes_;
+
+      bool reweightDz_;
+      bool reweightDxy_;
+      bool reweightNhit_;
+      std::string reweightDzFunc_;
+      std::string reweightDxyFunc_;
+      std::string reweightNhitFunc_;
+
+      TF1 * rwDzF_;
+      TF1 * rwDxyF_;
+      TF1 * rwNhitF_;
 
       enum { BPix1=0, BPix2=1, BPix3=2,
 	     FPix1_neg=3, FPix2_neg=4,
@@ -151,7 +164,6 @@ etaBins_(iConfig.getParameter<std::vector<double> >("etaBins")),
 occBins_(iConfig.getParameter<std::vector<double> >("occBins")),
 vtxWeightParameters_(iConfig.getParameter<std::vector<double> >("vtxWeightParameters")),
 doVtxReweighting_(iConfig.getParameter<bool>("doVtxReweighting")),
-occByNull_(iConfig.getParameter<bool>("occByNull")),
 occByCentrality_(iConfig.getParameter<bool>("occByCentrality")),
 occByNPixelTrk_(iConfig.getParameter<bool>("occByNPixelTrk")),
 occByJetEt_(iConfig.getParameter<bool>("occByJetEt")),
@@ -168,6 +180,7 @@ applyJetCuts_(iConfig.getParameter<bool>("applyJetCuts")),
 invertJetCuts_(iConfig.getParameter<bool>("invertJetCuts")),
 jetEtMin_(iConfig.getParameter<double>("jetEtMin")),
 jetEtMax_(iConfig.getParameter<double>("jetEtMax")),
+chargeCut_(iConfig.getParameter<int>("chargeCut")),
 applyTrackCuts_(iConfig.getParameter<bool>("applyTrackCuts")),
 qualityString_(iConfig.getParameter<std::string>("qualityString")),
 dxyErrMax_(iConfig.getParameter<double>("dzErrMax")),
@@ -175,7 +188,14 @@ dzErrMax_(iConfig.getParameter<double>("dzErrMax")),
 ptErrMax_(iConfig.getParameter<double>("ptErrMax")),
 fillGenHistos_(iConfig.getParameter<bool>("fillGenHistos")),
 fillTrkPerfHistos_(iConfig.getParameter<bool>("fillTrkPerfHistos")),
-doMomRes_(iConfig.getParameter<bool>("doMomRes"))
+fillTrkPerfHistosRF_(iConfig.getParameter<bool>("fillTrkPerfHistosRF")),
+doMomRes_(iConfig.getParameter<bool>("doMomRes")),
+reweightDz_(iConfig.getParameter<bool>("reweightDz")),
+reweightDxy_(iConfig.getParameter<bool>("reweightDxy")),
+reweightNhit_(iConfig.getParameter<bool>("reweightNhit")),
+reweightDzFunc_(iConfig.getParameter<std::string>("reweightDzFunc")),
+reweightDxyFunc_(iConfig.getParameter<std::string>("reweightDxyFunc")),
+reweightNhitFunc_(iConfig.getParameter<std::string>("reweightNhitFunc"))
 {
    edm::Service<TFileService> fs;
    initHistos(fs);
@@ -188,11 +208,18 @@ doMomRes_(iConfig.getParameter<bool>("doMomRes"))
      for( unsigned int i=0;i<vtxWeightParameters_.size(); i++)
        vtxWeightFunc_->SetParameter(i,vtxWeightParameters_[i]);
    }
+
+   rwDzF_ = new TF1("rwDzF",reweightDzFunc_.c_str(),-1000.,1000.);
+   rwDxyF_ = new TF1("rwDxyF",reweightDxyFunc_.c_str(),-1000.,1000.);
+   rwNhitF_ = new TF1("rwNhitF",reweightNhitFunc_.c_str(),0.,50.);
 }
 
 RpPbTrackingCorrections::~RpPbTrackingCorrections()
 {
    delete vtxWeightFunc_;
+   delete rwDzF_;
+   delete rwDxyF_;
+   delete rwNhitF_;
 }
 
 void
@@ -251,11 +278,8 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
    std::sort( vsorted.begin(), vsorted.end(), RpPbTrackingCorrections::vtxSort );
 
    // obtain event centrality
-   if( ! occByNull_ )
-   {
-     if (!centrality_) centrality_ = new CentralityProvider(iSetup);
-     centrality_->newEvent(iEvent,iSetup); 
-   }
+   if (!centrality_) centrality_ = new CentralityProvider(iSetup);
+   centrality_->newEvent(iEvent,iSetup); 
 
    // skip events with no PV, this should not happen
    if( vsorted.size() == 0) return;
@@ -273,15 +297,27 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
 
    vtxZ_->Fill(vsorted[0].z(),w);
 
+   // determine event multipliticy 
+   int multiplicity =0;
+   for(edm::View<reco::Track>::size_type i=0; i<tcol->size(); ++i){
+     edm::RefToBase<reco::Track> track(tcol, i);
+     reco::Track* tr=const_cast<reco::Track*>(track.get());
+     if( passesTrackCuts(*tr, vsorted[0]) ) 
+       multiplicity++;
+   }
+
    // determine occupancy variable for event
    double occ = 0.;  
    if( occByCentrality_) occ = (double) centrality_->getBin(); 
    if( occByNPixelTrk_) occ = centrality_->raw()->NpixelTracks();   
-   if( occByNull_) occ = 50.0;
    double leadJetEt = 0.;
    if ( ! sortedJets.empty() ) leadJetEt = sortedJets[0]->pt();
    if( occByLeadingJetEt_ ) occ = leadJetEt;
    leadJetEt_->Fill( leadJetEt ,w );
+
+
+   trkCorr2D_["hevtEM"]->Fill(multiplicity, leadJetEt, w);
+
    // ---------------------
    // loop through reco tracks to fill fake, reco, and secondary histograms
    // ---------------------
@@ -291,7 +327,10 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
      edm::RefToBase<reco::Track> track(tcol, i);
      reco::Track* tr=const_cast<reco::Track*>(track.get());
      // skip tracks that fail cuts, using vertex with most tracks as PV       
-     if( !passesTrackCuts(*tr, vsorted[0]) ) continue;
+     bool goodTrack = passesTrackCuts(*tr, vsorted[0]);
+
+     if( chargeCut_ < 0 && tr->charge() > 0 ) continue;
+     if( chargeCut_ > 0 && tr->charge() < 0 ) continue;
 
      // if applying jet cuts, only take tracks within jet 
      // cone of a jet within Et range
@@ -304,33 +343,73 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
         if( cut ) continue;
      } 
 
+     math::XYZPoint vtxPoint(0.0,0.0,0.0);
+     double vzErr =0.0, vxErr=0.0, vyErr=0.0;
+     vtxPoint=vsorted[0].position();
+     vzErr=vsorted[0].zError();
+     vxErr=vsorted[0].xError();
+     vyErr=vsorted[0].yError();
+
+     double tw = w;
+     double dxy=0.0, dz=0.0, dxysigma=0.0, dzsigma=0.0;
+     dxy = tr->dxy(vtxPoint);
+     dz = tr->dz(vtxPoint);
+     dxysigma = sqrt(tr->d0Error()*tr->d0Error()+vxErr*vyErr);
+     dzsigma = sqrt(tr->dzError()*tr->dzError()+vzErr*vzErr);
+     if( reweightDz_ ) tw *= rwDzF_->Eval(dz/dzsigma);
+     if( reweightDxy_ ) tw *= rwDxyF_->Eval(dxy/dxysigma);
+     if( reweightNhit_ ) tw *= rwNhitF_->Eval(tr->numberOfValidHits());
 
      // get Et of closest jet to track, or 0 if not in a cone, 
      // if jet occupancy is used
      if ( occByJetEt_ ) occ = bestJetEt( *tr, sortedJets);
 
-     trkCorr3D_["hrec3D"]->Fill(tr->eta(), tr->pt(), occ,w);
-     trkCorr2D_["hrec"]->Fill(tr->eta(), tr->pt(), w);
-
+     trkCorr3D_["hreca3D"]->Fill(tr->eta(), tr->pt(), occ,tw);
+     trkCorr2D_["hreca"]->Fill(tr->eta(), tr->pt(), tw);
+     if( goodTrack ) 
+     {
+       trkCorr3D_["hrec3D"]->Fill(tr->eta(), tr->pt(), occ,tw);
+       trkCorr2D_["hrec"]->Fill(tr->eta(), tr->pt(), tw);
+     } 
      // look for match to simulated particle, use first match if it exists
-     bool isFake = true;
      std::vector<std::pair<TrackingParticleRef, double> > tp;
      const TrackingParticle *mtp=0;
+     bool isFake = true;
      if(recSimColl.find(track) != recSimColl.end())
      {
        tp = recSimColl[track];
        mtp = tp.begin()->first.get();  
-       if( mtp->status() < 0) trkCorr3D_["hsec3D"]->Fill(tr->eta(), tr->pt(), occ, w);     
-       if( mtp->status() < 0) trkCorr2D_["hsec"]->Fill(tr->eta(), tr->pt(), w);     
+       if( mtp->status() < 0 && goodTrack) 
+       {
+         trkCorr3D_["hsec3D"]->Fill(tr->eta(), tr->pt(), occ, tw);     
+         trkCorr2D_["hsec"]->Fill(tr->eta(), tr->pt(), tw);     
+       }
+       if( mtp->status() < 0 ) 
+       {
+         trkCorr3D_["hseca3D"]->Fill(tr->eta(), tr->pt(), occ, tw);     
+         trkCorr2D_["hseca"]->Fill(tr->eta(), tr->pt(), tw);     
+       }
        isFake = false;
      }
      else
      {
-       trkCorr3D_["hfak3D"]->Fill(tr->eta(), tr->pt(), occ, w);
-       trkCorr2D_["hfak"]->Fill(tr->eta(), tr->pt(), w);
-     }
-     if( fillTrkPerfHistos_ ) fillTrkPerfHistosWithTrk( *tr, vsorted[0], w, isFake) ;
+       if( goodTrack ) 
+       {
+         trkCorr3D_["hfak3D"]->Fill(tr->eta(), tr->pt(), occ, tw);
+         trkCorr2D_["hfak"]->Fill(tr->eta(), tr->pt(), tw);
+         if( tr->eta() > -1.465 && tr->eta() < 0.535 )
+           trkCorr3D_["hfakEMpPb3D"]->Fill(multiplicity,tr->pt(), occ, w);
+         if( tr->eta() < 1.465 && tr->eta() > -0.535 )
+           trkCorr3D_["hfakEMPbp3D"]->Fill(multiplicity,tr->pt(), occ, w);
+       }
+         trkCorr3D_["hfaka3D"]->Fill(tr->eta(), tr->pt(), occ, tw);
+         trkCorr2D_["hfaka"]->Fill(tr->eta(), tr->pt(), tw);
 
+     }
+
+     if( fillTrkPerfHistos_ && goodTrack ) fillTrkPerfHistosWithTrk( *tr, vsorted[0], tw, isFake) ;
+
+    
    }
 
    // ---------------------
@@ -343,7 +422,10 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
      TrackingParticle* tp=const_cast<TrackingParticle*>(tpr.get());
          
      if(tp->status() < 0 || tp->charge()==0) continue; //only charged primaries
- 
+
+     if( chargeCut_ > 0 && tp->charge() < 0) continue; 
+     if( chargeCut_ < 0 && tp->charge() > 0) continue; 
+
      // select certain species for efficiency
      if( selectSpecies_ ) 
      { 
@@ -446,7 +528,7 @@ RpPbTrackingCorrections::initHistos(const edm::Service<TFileService> & fs)
 {
 
   std::vector<std::string> hNames3D = { "hsim3D", "hrec3D", "hmul3D", "hfak3D",
-                                        "heff3D", "hsec3D", "hacc3D" };
+                                        "heff3D", "hsec3D", "hacc3D", "hreca3D","hfaka3D","hseca3D" };
 
   for( auto name : hNames3D )
   {
@@ -457,7 +539,7 @@ RpPbTrackingCorrections::initHistos(const edm::Service<TFileService> & fs)
   }
 
   std::vector<std::string> hNames2D = { "hsim", "hrec", "hmul", "hfak",
-                                        "heff", "hsec", "hacc" };
+                                        "heff", "hsec", "hacc", "hreca","hfaka","hseca" };
 
   for( auto name : hNames2D )
   {
@@ -465,6 +547,23 @@ RpPbTrackingCorrections::initHistos(const edm::Service<TFileService> & fs)
                            etaBins_.size()-1, &etaBins_[0],
                            ptBins_.size()-1, &ptBins_[0]);
   }
+
+  std::vector<double> multBins;
+  multBins.clear();
+  for( double i = 0.; i<600.; i += 10.) multBins.push_back(i);
+
+  trkCorr3D_["hfakEMpPb3D"] = fs->make<TH3F>("hfakEMpPb3D",";mult;p_{T};occ var",
+                           multBins.size()-1, &multBins[0],
+                           ptBins_.size()-1, &ptBins_[0],
+                           occBins_.size()-1, &occBins_[0]);  
+  trkCorr3D_["hfakEMPbp3D"] = fs->make<TH3F>("hfakEMPbp3D",";mult;p_{T};occ var",
+                           multBins.size()-1, &multBins[0],
+                           ptBins_.size()-1, &ptBins_[0],
+                           occBins_.size()-1, &occBins_[0]);  
+
+     trkCorr2D_["hevtEM"] = fs->make<TH2F>("hevtEM",";mult;occ var",
+                           multBins.size()-1, &multBins[0],
+                           occBins_.size()-1, &occBins_[0]);
 
   std::vector<std::string> genNames3D = { "genPartH","genPartH+","genPartH-",
                                           "genPartPi","genPartPi+","genPartPi-",
@@ -564,8 +663,6 @@ RpPbTrackingCorrections::initHistos(const edm::Service<TFileService> & fs)
                            etaBins_.size()-1, &etaBins_[0],
                            ptBins_.size()-1, &ptBins_[0],
                            dumBins.size()-1, &dumBins[0]);
-
-
 
   vtxZ_ = fs->make<TH1F>("vtxZ","Vertex z position",100,-30,30);
   leadJetEt_ = fs->make<TH1F>("leadJetEt","Vertex z position",1000,0,1000);
@@ -769,6 +866,8 @@ RpPbTrackingCorrections::fillTrkPerfHistosWithTrk( const reco::Track & track, co
    trkPerf3D_["dzErr3D"]->Fill(track.eta(), track.pt(), dz/dzsigma, w);
    trkPerf3D_["chi23D"]->Fill(track.eta(), track.pt(), track.normalizedChi2(), w);
    trkPerf3D_["pterr3D"]->Fill(track.eta(), track.pt(), track.ptError() / track.pt(), w );
+   if( fillTrkPerfHistosRF_)
+   {
    if( isFake ) 
    {
      trkPerf3D_["Nhit3Dfak"]->Fill(track.eta(), track.pt(), track.numberOfValidHits(), w);
@@ -784,6 +883,7 @@ RpPbTrackingCorrections::fillTrkPerfHistosWithTrk( const reco::Track & track, co
      trkPerf3D_["dzErr3Drec"]->Fill(track.eta(), track.pt(), dz/dzsigma, w);
      trkPerf3D_["chi23Drec"]->Fill(track.eta(), track.pt(), track.normalizedChi2(), w);
      trkPerf3D_["pterr3Drec"]->Fill(track.eta(), track.pt(), track.ptError() / track.pt(), w );
+   }
    }
 }
 
