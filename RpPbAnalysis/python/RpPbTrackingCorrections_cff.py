@@ -6,10 +6,10 @@ trkCorr_HIN12017 = Appeltel.RpPbAnalysis.RpPbTrackingCorrections_cfi.pPbTrkCorr.
     vertexSrc = cms.InputTag("offlinePrimaryVertices"),
     ptBins = cms.vdouble(
         0.0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45,
-        0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95,
+        0.5, 0.55,  0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1.0,  
         1.1, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 2.4, 3.2, 4.0, 4.8, 5.6, 6.4,
         7.2, 9.6, 12.0, 14.4, 19.2, 24.0, 28.8, 35.2, 41.6, 48.0, 60.8, 73.6, 86.4, 103.6,
-        130.0
+        120.8, 138.0, 155.2, 172.4, 189.6, 206.8
     ),
     etaBins = cms.vdouble( 
         -2.46, -2.36, -2.26, -2.16, -2.06, -1.96, -1.86, -1.76, -1.66, -1.56,
@@ -37,39 +37,34 @@ trkCorr_HIN12017 = Appeltel.RpPbAnalysis.RpPbTrackingCorrections_cfi.pPbTrkCorr.
     ptErrMax = cms.double(0.1)
 )
 
+
 trkCorr_HIN12017_loose = trkCorr_HIN12017.clone(
     dxyErrMax = cms.double(6.0),
-    dzErrMax = cms.double(6.0),
-    ptErrMax = cms.double(0.2)
+    dzErrMax = cms.double(6.0)
 )
 
 trkCorr_HIN12017_loose2 = trkCorr_HIN12017.clone(
     dxyErrMax = cms.double(9.0),
-    dzErrMax = cms.double(9.0),
-    ptErrMax = cms.double(0.3)
+    dzErrMax = cms.double(9.0)
 )
 trkCorr_HIN12017_loose3 = trkCorr_HIN12017.clone(
     dxyErrMax = cms.double(12.0),
-    dzErrMax = cms.double(12.0),
-    ptErrMax = cms.double(0.4)
+    dzErrMax = cms.double(12.0)
 )
 
 trkCorr_HIN12017_tight = trkCorr_HIN12017.clone(
     dxyErrMax = cms.double(2.0),
-    dzErrMax = cms.double(2.0),
-    ptErrMax = cms.double(0.06)
+    dzErrMax = cms.double(2.0)
 )
-
 trkCorr_HIN12017_tight2 = trkCorr_HIN12017.clone(
     dxyErrMax = cms.double(1.6),
-    dzErrMax = cms.double(1.6),
-    ptErrMax = cms.double(0.045)
+    dzErrMax = cms.double(1.6)
 )
 trkCorr_HIN12017_tight3 = trkCorr_HIN12017.clone(
     dxyErrMax = cms.double(1.2),
-    dzErrMax = cms.double(1.2),
-    ptErrMax = cms.double(0.03)
+    dzErrMax = cms.double(1.2)
 )
+
 
 trkCorr_HIN12017_Z25 = trkCorr_HIN12017.clone(
     vertexZMax = cms.double(25.)
@@ -94,5 +89,15 @@ trkCorr_HIN12017_wideJetBin = trkCorr_HIN12017.clone(
     occBins = cms.vdouble(
         0., 40., 80., 120., 160.,
         200., 300., 500.
+    )
+)
+
+trkCorr_HIN12017_wideEtaBin = trkCorr_HIN12017.clone(
+    etaBins = cms.vdouble(
+        -2.4, -2.06, -1.76, 
+        -1.46, -1.16, -0.86, -0.56,
+        -0.46, -0.16, 0.14, 0.44, 
+        0.74, 1.04, 1.34, 1.64, 
+        1.94, 2.4
     )
 )
