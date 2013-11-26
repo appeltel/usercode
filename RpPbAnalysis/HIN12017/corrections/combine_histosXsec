@@ -1,0 +1,9 @@
+hadd -k trackCorrections_HIN12017v4charge_HijingPtHat15.root `ls | grep  "Jet15_" | sed -e 's/$/\/res\/trackCorrections\*\.root/'`
+hadd -k trackCorrections_HIN12017v4charge_HijingPtHat30.root `ls | grep  "Jet30_" | sed -e 's/$/\/res\/trackCorrections\*\.root/'`
+hadd -k trackCorrections_HIN12017v4charge_HijingPtHat50.root `ls | grep  "Jet50_" | sed -e 's/$/\/res\/trackCorrections\*\.root/'`
+hadd -k trackCorrections_HIN12017v4charge_HijingPtHat80.root `ls | grep  "Jet80_" | sed -e 's/$/\/res\/trackCorrections\*\.root/'`
+hadd -k trackCorrections_HIN12017v4charge_HijingPtHat120.root `ls | grep  "Jet120_" | sed -e 's/$/\/res\/trackCorrections\*\.root/'`
+hadd -k trackCorrections_HIN12017v4charge_HijingPtHat170.root `ls | grep  "Jet170_" | sed -e 's/$/\/res\/trackCorrections\*\.root/'`
+hadd -k trackCorrections_HIN12017v4charge_HijingPtHat220.root `ls | grep  "Jet220_" | sed -e 's/$/\/res\/trackCorrections\*\.root/'`
+hadd -k trackCorrections_HIN12017v4charge_HijingPtHat280.root `ls | grep  "Jet280_" | sed -e 's/$/\/res\/trackCorrections\*\.root/'`
+hadd -k trackCorrections_HIN12017v4charge_HijingPtHat370.root `ls | grep  "Jet370_" | sed -e 's/$/\/res\/trackCorrections\*\.root/'`
