@@ -90,6 +90,10 @@ class RpPbTrackingCorrections : public edm::EDAnalyzer {
       edm::InputTag associatorMap_;
       edm::InputTag jetSrc_;
 
+      bool doHLT_;
+      edm::InputTag hltTrackSrc_;
+      edm::InputTag hltAssociatorMap_;
+
       std::vector<double> ptBins_;
       std::vector<double> etaBins_;
       std::vector<double> occBins_;
@@ -159,6 +163,9 @@ tpFakSrc_(iConfig.getParameter<edm::InputTag>("tpFakSrc")),
 tpEffSrc_(iConfig.getParameter<edm::InputTag>("tpEffSrc")),
 associatorMap_(iConfig.getParameter<edm::InputTag>("associatorMap")),
 jetSrc_(iConfig.getParameter<edm::InputTag>("jetSrc")),
+doHLT_(iConfig.getParameter<bool>("doHLT")),
+hltTrackSrc_(iConfig.getParameter<edm::InputTag>("hltTrackSrc")),
+hltAssociatorMap_(iConfig.getParameter<edm::InputTag>("hltAssociatorMap")),
 ptBins_(iConfig.getParameter<std::vector<double> >("ptBins")),
 etaBins_(iConfig.getParameter<std::vector<double> >("etaBins")),
 occBins_(iConfig.getParameter<std::vector<double> >("occBins")),
@@ -249,6 +256,21 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
    // obtain reconstructed tracks
    Handle<edm::View<reco::Track> > tcol;
    iEvent.getByLabel(trackSrc_, tcol);
+
+   // obtain HLT tracks and maps if present
+   reco::RecoToSimCollection hltRecSimColl;
+   reco::SimToRecoCollection hltSimRecColl;
+   edm::Handle<reco::SimToRecoCollection > hltSimtorecoCollectionH;
+   edm::Handle<reco::RecoToSimCollection > hltRecotosimCollectionH;
+   Handle<edm::View<reco::Track> > hltTcol;    
+   if( doHLT_ )
+   {
+     iEvent.getByLabel(hltAssociatorMap_,hltSimtorecoCollectionH);
+     hltSimRecColl= *(hltSimtorecoCollectionH.product());
+     iEvent.getByLabel(hltAssociatorMap_,hltRecotosimCollectionH);
+     hltRecSimColl= *(hltRecotosimCollectionH.product());
+     iEvent.getByLabel(hltTrackSrc_, hltTcol);
+   }  
 
    //obtain tracker geometry
    iSetup.get<TrackerDigiGeometryRecord>().get(trackerGeo);
@@ -492,6 +514,25 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
      if(nrec>1) trkCorr3D_["hmul3D"]->Fill(tp->eta(),tp->pt(), occ, w);
      if(nrec>0) trkCorr2D_["heff"]->Fill(tp->eta(),tp->pt(), w);
      if(nrec>1) trkCorr2D_["hmul"]->Fill(tp->eta(),tp->pt(), w);
+
+     // find number of matched HLT tracks that pass cuts
+     if( doHLT_ )
+     {
+       size_t nrecHLT=0;
+       if(hltSimRecColl.find(tpr) != hltSimRecColl.end())
+       {
+         rt = (std::vector<std::pair<edm::RefToBase<reco::Track>, double> >) hltSimRecColl[tpr];
+         for (std::vector<std::pair<edm::RefToBase<reco::Track>, double> >::const_iterator rtit = rt.begin(); rtit != rt.end(); ++rtit)
+         {
+           const reco::Track* tmtr = rtit->first.get();
+           nrecHLT++;
+         }
+       }
+       if(nrecHLT>0) trkCorr3D_["heffHLT3D"]->Fill(tp->eta(),tp->pt(), occ, w);
+       if(nrecHLT>0) trkCorr2D_["heffHLT"]->Fill(tp->eta(),tp->pt(), w);
+       if(nrecHLT>0 && nrec>0) trkCorr3D_["heffHLTj3D"]->Fill(tp->eta(),tp->pt(), occ, w);
+       if(nrecHLT>0 && nrec>0) trkCorr2D_["heffHLTj"]->Fill(tp->eta(),tp->pt(), w);
+     }
    }
 }
 
@@ -528,7 +569,8 @@ RpPbTrackingCorrections::initHistos(const edm::Service<TFileService> & fs)
 {
 
   std::vector<std::string> hNames3D = { "hsim3D", "hrec3D", "hmul3D", "hfak3D",
-                                        "heff3D", "hsec3D", "hacc3D", "hreca3D","hfaka3D","hseca3D" };
+                                        "heff3D", "hsec3D", "hacc3D", "hreca3D",
+                                        "hfaka3D","hseca3D","heffHLT3D","heffHLTj3D" };
 
   for( auto name : hNames3D )
   {
@@ -539,7 +581,8 @@ RpPbTrackingCorrections::initHistos(const edm::Service<TFileService> & fs)
   }
 
   std::vector<std::string> hNames2D = { "hsim", "hrec", "hmul", "hfak",
-                                        "heff", "hsec", "hacc", "hreca","hfaka","hseca" };
+                                        "heff", "hsec", "hacc", "hreca",
+                                        "hfaka","hseca", "heffHLT","heffHLTj" };
 
   for( auto name : hNames2D )
   {
