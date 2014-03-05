@@ -27,19 +27,28 @@
 #include "FWCore/Framework/interface/EDAnalyzer.h"
 
 #include "FWCore/Framework/interface/Event.h"
+#include "FWCore/Framework/interface/EventSetup.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
+#include "FWCore/Framework/interface/ESHandle.h"
 
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 
 #include "DataFormats/JetReco/interface/GenJet.h"
 #include "DataFormats/JetReco/interface/GenJetCollection.h"
+#include "DataFormats/HepMCCandidate/interface/GenParticle.h"
+#include "DataFormats/HepMCCandidate/interface/GenParticleFwd.h"
+#include "DataFormats/Math/interface/deltaR.h"
 
 #include "SimDataFormats/GeneratorProducts/interface/GenEventInfoProduct.h"
+#include "SimDataFormats/GeneratorProducts/interface/PdfInfo.h"
+#include "HepPDT/ParticleID.hh"
+#include "SimGeneral/HepPDTRecord/interface/ParticleDataTable.h"
 
 #include "FWCore/ServiceRegistry/interface/Service.h"
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
 
 #include <TH1.h>
+#include <TH2.h>
 
 //
 // class declaration
@@ -63,15 +72,22 @@ class GenJetCrossCheckAnalyzer : public edm::EDAnalyzer {
       virtual void beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&);
       virtual void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&);
 
+      bool isDSEvent( const edm::Event&, const edm::EventSetup& );
+
       // ----------member data ---------------------------
 
       edm::InputTag genJetSrc_;
+      edm::InputTag genParticleSrc_;
       double etaMin_;
       double etaMax_;
+      double jetRadius_;
+      double pthatMin_;
+      double pthatMax_;
       std::vector<double> ptBins_;
       std::string pythiaProcess_;
 
       std::map<std::string,TH1F*> hist_;
+      std::map<std::string,TH2F*> hist2D_;
 
 };
 
@@ -82,19 +98,51 @@ class GenJetCrossCheckAnalyzer : public edm::EDAnalyzer {
 
 GenJetCrossCheckAnalyzer::GenJetCrossCheckAnalyzer(const edm::ParameterSet& iConfig):
 genJetSrc_(iConfig.getParameter<edm::InputTag>("genJetSrc")),
+genParticleSrc_(iConfig.getParameter<edm::InputTag>("genParticleSrc")),
 etaMin_(iConfig.getParameter<double>("etaMin")),
 etaMax_(iConfig.getParameter<double>("etaMax")),
+jetRadius_(iConfig.getParameter<double>("jetRadius")),
+pthatMin_(iConfig.getParameter<double>("pthatMin")),
+pthatMax_(iConfig.getParameter<double>("pthatMax")),
 ptBins_(iConfig.getParameter<std::vector<double> >("ptBins")),
 pythiaProcess_(iConfig.getParameter<std::string>("pythiaProcess"))
 {
    edm::Service<TFileService> fs;
 
-   hist_["spectrum"] = fs->make<TH1F>("spectrum",";counts;p_{T}",
+   hist_["spectrum"] = fs->make<TH1F>("spectrum",";p_{T};counts",
                            ptBins_.size()-1, &ptBins_[0]);
+   hist_["pspectrum"] = fs->make<TH1F>("pspectrum",";p_{T};counts",
+                           ptBins_.size()-1, &ptBins_[0]);
+   hist_["spectrum_DS"] = fs->make<TH1F>("spectrum_DS",";p_{T};counts",
+                           ptBins_.size()-1, &ptBins_[0]);
+   hist_["pspectrum_DS"] = fs->make<TH1F>("pspectrum_DS",";p_{T};counts",
+                           ptBins_.size()-1, &ptBins_[0]);
+   hist_["spectrum_fine"] = fs->make<TH1F>("spectrum_fine",";p_{T};counts",
+                           1000,0.,1000.);
+   hist_["pspectrum_fine"] = fs->make<TH1F>("pspectrum_fine",";p_{T};counts",
+                           1000,0.2,200.);
+
+   hist_["qscale"] = fs->make<TH1F>("qscale",";p_{T}-hat;counts",
+                           1000,0.,1000.);
 
    hist_["events"] = fs->make<TH1F>("events",";;events",1,0.,2.);
+   hist_["events_DS"] = fs->make<TH1F>("events_DS",";;double sided events",1,0.,2.);
 
-   std::cout << "Pyhtia process: " << pythiaProcess_ << std::endl;
+   hist2D_["cmatrix"] = fs->make<TH2F>("cmatrix",";p_{T} Jet;p_{T} h^{#pm}",
+                           1000,0.,1000.,1000,0.,200.);
+
+   // logarthmically binned spectra, delta pt = 1%
+
+   std::vector<double> logbins; logbins.reserve(2000); logbins.push_back(0);
+   for( double bin = 0.1; bin < 1000; bin += bin*0.1)
+     logbins.push_back(bin);
+   hist_["spectrum_log"] = fs->make<TH1F>("spectrum_log",";counts;p_{T}",
+                           logbins.size()-1, &logbins[0]);
+   hist_["pspectrum_log"] = fs->make<TH1F>("pspectrum_log",";counts;p_{T}",
+                           logbins.size()-1, &logbins[0]);
+
+  
+   std::cout << "Pythia process: " << pythiaProcess_ << std::endl;
 
 }
 
@@ -119,30 +167,105 @@ GenJetCrossCheckAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetu
    // remove events over the pt-hat maximum by hand.
    // We skip and do not count such events.
    // Here it is only coded for the MB_0_to_20 process
+   edm::Handle<GenEventInfoProduct> genEvtInfo;
+   iEvent.getByLabel("generator", genEvtInfo);
    
-   std::string mbProcess = "MB_0_to_20";
-   if( pythiaProcess_ == mbProcess )
+   if( pthatMin_ < 1. )
    {
-     edm::Handle<GenEventInfoProduct> genEvtInfo;
-     iEvent.getByLabel("generator", genEvtInfo);
-     if( genEvtInfo->qScale() > 20 ) std::cout << "qScale = " << genEvtInfo->qScale() << std::endl;
-     if( genEvtInfo->qScale() > 20 ) return;
+     if( genEvtInfo->qScale() > pthatMax_ ) return;
    }
 
-   // Analyze GenJets
+   // Check if the event is DS
+   bool isDS = isDSEvent(iEvent,iSetup);
 
    Handle<reco::GenJetCollection> gcol;
    iEvent.getByLabel(genJetSrc_,gcol);
 
-   hist_["events"]->Fill(1);
+   Handle<reco::GenParticleCollection> pcol;
+   iEvent.getByLabel(genParticleSrc_,pcol);
 
+   hist_["events"]->Fill(1);
+   if(isDS) hist_["events_DS"]->Fill(1);
+   hist_["qscale"]->Fill(genEvtInfo->qScale());
+
+   // genjet spectra
    for( const auto & jet : *gcol )
    {
      if( jet.eta() <= etaMax_ && jet.eta() >= etaMin_ )
+     {
        hist_["spectrum"]->Fill(jet.pt());
+       if(isDS) hist_["spectrum_DS"]->Fill(jet.pt());
+       hist_["spectrum_fine"]->Fill(jet.pt());
+       hist_["spectrum_log"]->Fill(jet.pt());
+     }
    }
+
+   // charged particle spectra and convolution matrix
+   for( const auto & h : *pcol )
+   {
+     // skip decayed and neutral particles
+     if( h.status() != 1 || h.charge() == 0  ) continue;
+
+     if( h.eta() <= etaMax_ && h.eta() >= etaMin_ )
+     {
+       hist_["pspectrum"]->Fill(h.pt());
+       if(isDS) hist_["pspectrum_DS"]->Fill(h.pt());
+       hist_["pspectrum_fine"]->Fill(h.pt());
+       hist_["pspectrum_log"]->Fill(h.pt());
+     
+       // associate with the highest-pt jet for which 
+       // the track is found in the jet cone
+       double maxPtJet = 0.;
+       for( const auto & jet : *gcol )
+       {
+         if( jet.eta() <= etaMax_ && jet.eta() >= etaMin_ )
+         {
+           double dr = deltaR(jet,h);
+           if( dr < jetRadius_ && jet.pt() > maxPtJet)
+            maxPtJet = jet.pt();
+         }
+       }
+       hist2D_["cmatrix"]->Fill( maxPtJet, h.pt());
+     }
+   }
+
 }
 
+
+bool 
+GenJetCrossCheckAnalyzer::isDSEvent( const edm::Event& iEvent, const edm::EventSetup& iSetup)
+{
+
+     using namespace edm;
+
+     bool posDS = false; bool negDS = false;
+
+     edm::ESHandle<ParticleDataTable> particleDataTable_;
+     iSetup.getData(particleDataTable_);
+
+     Handle<reco::GenParticleCollection> gcol;
+     iEvent.getByLabel(genParticleSrc_, gcol);
+     for( const auto & gen : * gcol )
+     {
+       // see if genpartice counts for DS
+       HepPDT::ParticleID particleID(gen.pdgId());
+       if (particleID.isValid())
+       {
+         ParticleData const * particleData = particleDataTable_->particle(particleID);
+         if (particleData)
+         { 
+           double tau =  particleDataTable_->particle(particleID)->lifetime();
+           if ( tau  > 1e-18 || tau == 0.0 )
+           {
+             if( gen.energy() > 3.0 && gen.eta() > 3.0 && gen.eta() < 5.0 ) posDS = true;
+             if( gen.energy() > 3.0 && gen.eta() < -3.0 && gen.eta() > -5.0 ) negDS = true;
+           }
+         }
+       }
+     }
+     if( posDS && negDS ) return true;
+     else return false;
+}
 
 // ------------ method called once each job just before starting event loop  ------------
 void 
