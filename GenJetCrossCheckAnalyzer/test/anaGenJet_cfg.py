@@ -12,7 +12,7 @@ options.output = 'genJetSpectrum.root'
 options.maxEvents = 100
 
 options.register('processType',
-                 "NSD_50_to_80",
+                 "NSD",
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.string,
                  "Pythia process type with pT_hat range")
@@ -22,6 +22,18 @@ options.register('sqrtS',
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.float,
                  "Center-of-mass energy")
+
+options.register('ptHatLow',
+                 50,
+                 VarParsing.VarParsing.multiplicity.singleton,
+                 VarParsing.VarParsing.varType.int,
+                 "Minimum pt-hat")
+
+options.register('ptHatHigh',
+                 80,
+                 VarParsing.VarParsing.multiplicity.singleton,
+                 VarParsing.VarParsing.varType.int,
+                 "Maximum pt-hat")
 
 options.parseArguments()
 
@@ -42,13 +54,20 @@ process.maxEvents = cms.untracked.PSet(
     input = cms.untracked.int32(options.maxEvents)
 )
 process.options = cms.untracked.PSet(
-    Rethrow = cms.untracked.vstring('ProductNotFound')
+    Rethrow = cms.untracked.vstring('ProductNotFound'),
+    makeTriggerResults = cms.untracked.bool(True),
+    wantSummary = cms.untracked.bool(True)
 )
+
 process.source = cms.Source("EmptySource")
 
 process.TFileService = cms.Service("TFileService",
     fileName = cms.string(options.output)
 )
+
+from IOMC.RandomEngine.RandomServiceHelper import RandomNumberServiceHelper
+randSvc = RandomNumberServiceHelper(process.RandomNumberGeneratorService)
+randSvc.populate()
 
 process.MessageLogger.cerr.FwkReport.reportEvery = 1000
 
@@ -65,12 +84,13 @@ process.generator = cms.EDFilter("Pythia6GeneratorFilter",
     PythiaParameters = cms.PSet(
          pythiaUESettingsBlock,
          processParameters = cms.vstring(
-                 'MSEL=1         ! High Pt QCD',
-                 'CKIN(3)=50     ! Pt hat lower cut',
-                 'CKIN(4)=80     ! Pt hat upper cut'
+                 'MSEL=1         ! High Pt QCD'
                  ),
          parameterSets = cms.vstring('pythiaUESettings',
-                                     'processParameters')
+                                     'processParameters',
+                                     #'pthatLow',
+                                     #'pthatHigh')
+                                    )
          )
 )
 
@@ -78,8 +98,10 @@ process.gen_step = cms.Path(process.generator
                             * process.genParticles )
 
 # update the process parameters and c.o.m energy
-from customiseGEN_cfi import *
-updatePy6ProcParameters(process.generator,options.processType,options.sqrtS)
+from customiseGEN2_cfi import *
+updatePy6ProcParameters(process.generator,options.processType,options.ptHatLow,options.ptHatHigh,options.sqrtS)
+
+print process.generator.PythiaParameters.processParameters
 
 # ============= Gen jet ================================
 process.ak3GenJets = process.ak5GenJets.clone( rParam = 0.3 )
@@ -90,8 +112,12 @@ process.genjet_step = cms.Path(process.genJetParticles
 # =============== Analysis =============================
 process.ak3GenJetSpectrum = cms.EDAnalyzer('GenJetCrossCheckAnalyzer',
     genJetSrc = cms.InputTag("ak3GenJets"),
+    genParticleSrc = cms.InputTag("genParticles"),
     etaMin = cms.double(-1.0),
     etaMax = cms.double(1.0),
+    jetRadius = cms.double(0.3),
+    pthatMin = cms.double(options.ptHatLow),
+    pthatMax = cms.double(options.ptHatHigh),
     ptBins = cms.vdouble( 3, 4, 5, 7, 9, 12, 15, 18, 22, 27, 33, 39, 47, 55, 64, 74, 84, 97, 114, 133, 153, 174, 196, 220, 245, 272, 300, 429, 692, 1000 ),
     pythiaProcess = cms.string(options.processType )    
 )
