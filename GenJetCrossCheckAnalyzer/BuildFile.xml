@@ -2,7 +2,11 @@
 <use name="FWCore/PluginManager"/>
 <use name="FWCore/ParameterSet"/>
 <use name="DataFormats/JetReco"/>
+<use name="DataFormats/Math"/>
 <use name="FWCore/ServiceRegistry"/>
 <use name="CommonTools/UtilAlgos"/>
 <use name="SimDataFormats/GeneratorProducts"/>
+<use name="DataFormats/HepMCCandidate"/>
+<use name="SimGeneral/HepPDTRecord"/>
+<use name="hepmc"/>
 <flags EDM_PLUGIN="1"/>
