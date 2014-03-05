@@ -11,6 +11,6 @@ source /cvmfs/cms.cern.ch/cmsset_default.sh
 export SCRAM_ARCH=slc5_amd64_gcc462
 eval `scramv1 runtime -sh`
 
-cmsRun anaGenJet_cfg.py output="$Z2_OUTPUT" maxEvents="$Z2_MAXEVENTS" processType="$Z2_PROCESSTYPE" 
+cmsRun anaGenJet_cfg.py output="$Z2OUTPUT" maxEvents="$Z2MAXEVENTS" processType="$Z2PROCESSTYPE" ptHatLow="$Z2PTHATLOW" ptHatHigh="$Z2PTHATHIGH" &> run-$Z2PTHATLOW-$Z2PTHATHIGH-Z2.log
 
 exit 0
