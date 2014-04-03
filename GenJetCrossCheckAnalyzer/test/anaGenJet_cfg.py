@@ -122,13 +122,8 @@ process.ak3GenJetSpectrum = cms.EDAnalyzer('GenJetCrossCheckAnalyzer',
     pythiaProcess = cms.string(options.processType )    
 )
 
-process.ak3GenJetSpectrum_n22_n17 = process.ak3GenJetSpectrum.clone(
+process.ak3GenJetSpectrum_n22_n12 = process.ak3GenJetSpectrum.clone(
     etaMin = cms.double(-2.2),
-    etaMax = cms.double(-1.7)
-)
-
-process.ak3GenJetSpectrum_n17_n12 = process.ak3GenJetSpectrum.clone(
-    etaMin = cms.double(-1.7),
     etaMax = cms.double(-1.2)
 )
 
@@ -142,15 +137,11 @@ process.ak3GenJetSpectrum_n07_n03 = process.ak3GenJetSpectrum.clone(
     etaMax = cms.double(-0.3)
 )
 
-process.ak3GenJetSpectrum_p17_p22 = process.ak3GenJetSpectrum.clone(
-    etaMin = cms.double(1.7),
+process.ak3GenJetSpectrum_p12_p22 = process.ak3GenJetSpectrum.clone(
+    etaMin = cms.double(1.2),
     etaMax = cms.double(2.2)
 )
 
-process.ak3GenJetSpectrum_p12_p17 = process.ak3GenJetSpectrum.clone(
-    etaMin = cms.double(1.2),
-    etaMax = cms.double(1.7)
-)
 
 process.ak3GenJetSpectrum_p07_p12 = process.ak3GenJetSpectrum.clone(
     etaMin = cms.double(0.7),
@@ -170,15 +161,13 @@ process.ak3GenJetSpectrum_n03_p03 = process.ak3GenJetSpectrum.clone(
 
 process.ana_step = cms.Path(
     process.ak3GenJetSpectrum * 
-    process.ak3GenJetSpectrum_n22_n17 *
-    process.ak3GenJetSpectrum_n17_n12 *
+    process.ak3GenJetSpectrum_n22_n12 *
     process.ak3GenJetSpectrum_n12_n07 *
     process.ak3GenJetSpectrum_n07_n03 *
     process.ak3GenJetSpectrum_n03_p03 *
     process.ak3GenJetSpectrum_p03_p07 *
     process.ak3GenJetSpectrum_p07_p12 *
-    process.ak3GenJetSpectrum_p12_p17 *
-    process.ak3GenJetSpectrum_p17_p22 
+    process.ak3GenJetSpectrum_p12_p22 
 )
 
 process.schedule = cms.Schedule(process.gen_step,
