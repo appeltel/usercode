@@ -17,19 +17,17 @@
                            "80to120","120to170","170to230",
                            "230to300","300to380","380toinf"};
 
-  char dirname[10][256] = {
-        "ak3GenJetSpectrum_n22_n17",
-        "ak3GenJetSpectrum_n17_n12",
+  char dirname[8][256] = {
+        "ak3GenJetSpectrum_n22_n12",
         "ak3GenJetSpectrum_n12_n07",
         "ak3GenJetSpectrum_n07_n03",
         "ak3GenJetSpectrum_n03_p03",
         "ak3GenJetSpectrum_p03_p07",
         "ak3GenJetSpectrum_p07_p12",
-        "ak3GenJetSpectrum_p12_p17",
-        "ak3GenJetSpectrum_p17_p22",
+        "ak3GenJetSpectrum_p12_p22",
         "ak3GenJetSpectrum"};
 
-  double etaWid[10] = {0.5,0.5,0.5,0.4,0.6,0.4,0.5,0.5,0.5,2.0};
+  double etaWid[8] = {1.0,0.5,0.4,0.6,0.4,0.5,1.0,2.0};
 
   // retrieve and normalize spectra
   TH1F * spectrum[10][10];
@@ -38,8 +36,8 @@
   double nevt[10][10]; 
   for( int i=0; i<10;i++)
   {
-    f[i] = new TFile(Form("AnaGENJetR3_Mar30_Z2Pt%s_numEvent640000.root",rpthats[i]));
-    for( int j=0; j<10; j++)
+    f[i] = new TFile(Form("AnaGENJetR3_Apr2_Z2Pt%s_numEvent640000.root",rpthats[i]));
+    for( int j=0; j<8; j++)
     {
       events[i][j] = (TH1F *) f[i]->Get(Form("%s/events",dirname[j]));
       events[i][j]->SetName(Form("events_%d_%d",i,j));
@@ -73,16 +71,14 @@
     }
   }
 
-  char dirnameout[10][256] = {
-        "ak3GenJetSpectrum_n22_n17",
-        "ak3GenJetSpectrum_n17_n12",
+  char dirnameout[8][256] = {
+        "ak3GenJetSpectrum_n22_n12",
         "ak3GenJetSpectrum_n12_n07",
         "ak3GenJetSpectrum_n07_n03",
         "ak3GenJetSpectrum_n03_p03",
         "ak3GenJetSpectrum_p03_p07",
         "ak3GenJetSpectrum_p07_p12",
-        "ak3GenJetSpectrum_p12_p17",
-        "ak3GenJetSpectrum_p17_p22",
+        "ak3GenJetSpectrum_p12_p22",
         "ak3GenJetSpectrum_n10_p10"};
 
 
@@ -90,9 +86,9 @@
   TH1F * spectrum_out[10];
   TH1F * spectrumf_out[10];
 
-  TFile * f_out = new TFile("AnaGENJetR3_Mar30_Z2Combined.root","RECREATE");
+  TFile * f_out = new TFile("AnaGENJetR3_Apr2_Z2Combined.root","RECREATE");
 
-  for( int j=0;j<10;j++)
+  for( int j=0;j<8;j++)
   {
     TDirectory * tdir = f_out->mkdir(dirnameout[j]);
     for( int i=1;i<10;i++) spectrum[0][j]->Add(spectrum[i][j],1.0);
