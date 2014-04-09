@@ -80,6 +80,7 @@ process.MessageLogger.cerr.FwkReport.reportEvery = 1000
 from Configuration.Generator.PythiaUEZ2Settings_cfi import *
 #from Configuration.Generator.PythiaUEZ2starSettings_cfi import *
 #from PythiaUEAMBT2Settings_cfi import *
+#from PythiaUEAMBT2BSettings_cfi import *
 
 process.generator = cms.EDFilter("Pythia6GeneratorFilter",
     pythiaPylistVerbosity = cms.untracked.int32(0),
