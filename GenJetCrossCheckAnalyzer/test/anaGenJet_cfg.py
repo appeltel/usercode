@@ -72,8 +72,14 @@ randSvc.populate()
 process.MessageLogger.cerr.FwkReport.reportEvery = 1000
 
 # ============= Pythia setting  ================================
+#
+# Uncomment one of these settings corresponding to the
+# tune that you want to generate
+#
+
 from Configuration.Generator.PythiaUEZ2Settings_cfi import *
 #from Configuration.Generator.PythiaUEZ2starSettings_cfi import *
+#from PythiaUEAMBT2Settings_cfi import *
 
 process.generator = cms.EDFilter("Pythia6GeneratorFilter",
     pythiaPylistVerbosity = cms.untracked.int32(0),
