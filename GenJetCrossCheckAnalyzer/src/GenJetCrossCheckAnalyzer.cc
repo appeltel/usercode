@@ -78,6 +78,8 @@ class GenJetCrossCheckAnalyzer : public edm::EDAnalyzer {
 
       edm::InputTag genJetSrc_;
       edm::InputTag genParticleSrc_;
+      bool doCMatrix_;
+      bool jetsByAbsRapidity_;
       double etaMin_;
       double etaMax_;
       double jetRadius_;
@@ -99,6 +101,8 @@ class GenJetCrossCheckAnalyzer : public edm::EDAnalyzer {
 GenJetCrossCheckAnalyzer::GenJetCrossCheckAnalyzer(const edm::ParameterSet& iConfig):
 genJetSrc_(iConfig.getParameter<edm::InputTag>("genJetSrc")),
 genParticleSrc_(iConfig.getParameter<edm::InputTag>("genParticleSrc")),
+doCMatrix_(iConfig.getParameter<bool>("doCMatrix")),
+jetsByAbsRapidity_(iConfig.getParameter<bool>("jetsByAbsRapidity")),
 etaMin_(iConfig.getParameter<double>("etaMin")),
 etaMax_(iConfig.getParameter<double>("etaMax")),
 jetRadius_(iConfig.getParameter<double>("jetRadius")),
@@ -191,7 +195,16 @@ GenJetCrossCheckAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetu
    // genjet spectra
    for( const auto & jet : *gcol )
    {
-     if( jet.eta() <= etaMax_ && jet.eta() >= etaMin_ )
+     bool isInRange = false;
+
+     if( jetsByAbsRapidity_ == false &&  jet.eta() <= etaMax_ && jet.eta() >= etaMin_ )
+       isInRange = true;
+
+     if( jetsByAbsRapidity_ == true &&  fabs(jet.y()) <= etaMax_ && fabs(jet.y()) >= etaMin_ )
+       isInRange = true;
+
+
+     if( isInRange )
      {
        hist_["spectrum"]->Fill(jet.pt());
        if(isDS) hist_["spectrum_DS"]->Fill(jet.pt());
@@ -206,6 +219,7 @@ GenJetCrossCheckAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetu
      // skip decayed and neutral particles
      if( h.status() != 1 || h.charge() == 0  ) continue;
 
+
      if( h.eta() <= etaMax_ && h.eta() >= etaMin_ )
      {
        hist_["pspectrum"]->Fill(h.pt());
@@ -215,17 +229,20 @@ GenJetCrossCheckAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetu
      
        // associate with the highest-pt jet for which 
        // the track is found in the jet cone
-       double maxPtJet = 0.;
-       for( const auto & jet : *gcol )
+       if( doCMatrix_) 
        {
-         if( jet.eta() <= etaMax_ && jet.eta() >= etaMin_ )
+         double maxPtJet = 0.;
+         for( const auto & jet : *gcol )
          {
-           double dr = deltaR(jet,h);
-           if( dr < jetRadius_ && jet.pt() > maxPtJet)
-            maxPtJet = jet.pt();
+           if( jet.eta() <= etaMax_ && jet.eta() >= etaMin_ )
+           {
+             double dr = deltaR(jet,h);
+             if( dr < jetRadius_ && jet.pt() > maxPtJet)
+              maxPtJet = jet.pt();
+           }
          }
+         hist2D_["cmatrix"]->Fill( maxPtJet, h.pt());
        }
-       hist2D_["cmatrix"]->Fill( maxPtJet, h.pt());
      }
    }
 
