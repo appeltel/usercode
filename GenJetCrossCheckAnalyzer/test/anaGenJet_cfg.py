@@ -18,7 +18,7 @@ options.register('processType',
                  "Pythia process type with pT_hat range")
 
 options.register('sqrtS',
-                 5020.0,
+                 2760.0,
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.float,
                  "Center-of-mass energy")
@@ -72,15 +72,9 @@ randSvc.populate()
 process.MessageLogger.cerr.FwkReport.reportEvery = 1000
 
 # ============= Pythia setting  ================================
-#
-# Uncomment one of these settings corresponding to the
-# tune that you want to generate
-#
-
 from Configuration.Generator.PythiaUEZ2Settings_cfi import *
 #from Configuration.Generator.PythiaUEZ2starSettings_cfi import *
 #from PythiaUEAMBT2Settings_cfi import *
-#from PythiaUEAMBT2BSettings_cfi import *
 
 process.generator = cms.EDFilter("Pythia6GeneratorFilter",
     pythiaPylistVerbosity = cms.untracked.int32(0),
@@ -112,14 +106,22 @@ print process.generator.PythiaParameters.processParameters
 
 # ============= Gen jet ================================
 process.ak3GenJets = process.ak5GenJets.clone( rParam = 0.3 )
+process.ak4GenJets = process.ak5GenJets.clone( rParam = 0.4 )
+process.ak7GenJets = process.ak5GenJets.clone( rParam = 0.7 )
 
 process.genjet_step = cms.Path(process.genJetParticles 
-                               * process.ak3GenJets )
+                               * process.ak3GenJets
+                               * process.ak4GenJets
+                               * process.ak5GenJets
+                               * process.ak7GenJets
+)
 
 # =============== Analysis =============================
 process.ak3GenJetSpectrum = cms.EDAnalyzer('GenJetCrossCheckAnalyzer',
     genJetSrc = cms.InputTag("ak3GenJets"),
     genParticleSrc = cms.InputTag("genParticles"),
+    doCMatrix = cms.bool(True),
+    jetsByAbsRapidity = cms.bool(False),
     etaMin = cms.double(-1.0),
     etaMax = cms.double(1.0),
     jetRadius = cms.double(0.3),
@@ -129,52 +131,379 @@ process.ak3GenJetSpectrum = cms.EDAnalyzer('GenJetCrossCheckAnalyzer',
     pythiaProcess = cms.string(options.processType )    
 )
 
-process.ak3GenJetSpectrum_n22_n12 = process.ak3GenJetSpectrum.clone(
+process.ak3GenJetSpectrum_n10_p10 = process.ak3GenJetSpectrum.clone(
+    doCMatrix = cms.bool(False)
+)
+
+process.ak3GenJetSpectrum_n22_n12 = process.ak3GenJetSpectrum_n10_p10.clone(
     etaMin = cms.double(-2.2),
     etaMax = cms.double(-1.2)
 )
 
-process.ak3GenJetSpectrum_n12_n07 = process.ak3GenJetSpectrum.clone(
+process.ak3GenJetSpectrum_n12_n07 = process.ak3GenJetSpectrum_n10_p10.clone(
     etaMin = cms.double(-1.2),
     etaMax = cms.double(-0.7)
 )
 
-process.ak3GenJetSpectrum_n07_n03 = process.ak3GenJetSpectrum.clone(
+process.ak3GenJetSpectrum_n07_n03 = process.ak3GenJetSpectrum_n10_p10.clone(
     etaMin = cms.double(-0.7),
     etaMax = cms.double(-0.3)
 )
 
-process.ak3GenJetSpectrum_p12_p22 = process.ak3GenJetSpectrum.clone(
+process.ak3GenJetSpectrum_p12_p22 = process.ak3GenJetSpectrum_n10_p10.clone(
     etaMin = cms.double(1.2),
     etaMax = cms.double(2.2)
 )
 
 
-process.ak3GenJetSpectrum_p07_p12 = process.ak3GenJetSpectrum.clone(
+process.ak3GenJetSpectrum_p07_p12 = process.ak3GenJetSpectrum_n10_p10.clone(
     etaMin = cms.double(0.7),
     etaMax = cms.double(1.2)
 )
 
-process.ak3GenJetSpectrum_p03_p07 = process.ak3GenJetSpectrum.clone(
+process.ak3GenJetSpectrum_p03_p07 = process.ak3GenJetSpectrum_n10_p10.clone(
     etaMin = cms.double(0.3),
     etaMax = cms.double(0.7)
 )
 
 
-process.ak3GenJetSpectrum_n03_p03 = process.ak3GenJetSpectrum.clone(
+process.ak3GenJetSpectrum_n03_p03 = process.ak3GenJetSpectrum_n10_p10.clone(
     etaMin = cms.double(-0.3),
     etaMax = cms.double(0.3)
 )
 
+process.ak4GenJetSpectrum_n03_p03 = process.ak3GenJetSpectrum_n03_p03.clone(
+    genJetSrc = cms.InputTag("ak4GenJets")
+)
+process.ak4GenJetSpectrum_n10_p10 = process.ak3GenJetSpectrum_n10_p10.clone(
+    genJetSrc = cms.InputTag("ak4GenJets")
+)
+process.ak4GenJetSpectrum_n22_n12 = process.ak3GenJetSpectrum_n22_n12.clone(
+    genJetSrc = cms.InputTag("ak4GenJets")
+)
+process.ak4GenJetSpectrum_n12_n07 = process.ak3GenJetSpectrum_n12_n07.clone(
+    genJetSrc = cms.InputTag("ak4GenJets")
+)
+process.ak4GenJetSpectrum_n07_n03 = process.ak3GenJetSpectrum_n07_n03.clone(
+    genJetSrc = cms.InputTag("ak4GenJets")
+)
+process.ak4GenJetSpectrum_p03_p07 = process.ak3GenJetSpectrum_p03_p07.clone(
+    genJetSrc = cms.InputTag("ak4GenJets")
+)
+process.ak4GenJetSpectrum_p07_p12 = process.ak3GenJetSpectrum_p07_p12.clone(
+    genJetSrc = cms.InputTag("ak4GenJets")
+)
+process.ak4GenJetSpectrum_p12_p22 = process.ak3GenJetSpectrum_p12_p22.clone(
+    genJetSrc = cms.InputTag("ak4GenJets")
+)
+
+process.ak5GenJetSpectrum_n03_p03 = process.ak3GenJetSpectrum_n03_p03.clone(
+    genJetSrc = cms.InputTag("ak5GenJets")
+)
+process.ak5GenJetSpectrum_n10_p10 = process.ak3GenJetSpectrum_n10_p10.clone(
+    genJetSrc = cms.InputTag("ak5GenJets")
+)
+process.ak5GenJetSpectrum_n22_n12 = process.ak3GenJetSpectrum_n22_n12.clone(
+    genJetSrc = cms.InputTag("ak5GenJets")
+)
+process.ak5GenJetSpectrum_n12_n07 = process.ak3GenJetSpectrum_n12_n07.clone(
+    genJetSrc = cms.InputTag("ak5GenJets")
+)
+process.ak5GenJetSpectrum_n07_n03 = process.ak3GenJetSpectrum_n07_n03.clone(
+    genJetSrc = cms.InputTag("ak5GenJets")
+)
+process.ak5GenJetSpectrum_p03_p07 = process.ak3GenJetSpectrum_p03_p07.clone(
+    genJetSrc = cms.InputTag("ak5GenJets")
+)
+process.ak5GenJetSpectrum_p07_p12 = process.ak3GenJetSpectrum_p07_p12.clone(
+    genJetSrc = cms.InputTag("ak5GenJets")
+)
+process.ak5GenJetSpectrum_p12_p22 = process.ak3GenJetSpectrum_p12_p22.clone(
+    genJetSrc = cms.InputTag("ak5GenJets")
+)
+
+
+process.ak7GenJetSpectrum_n03_p03 = process.ak3GenJetSpectrum_n03_p03.clone(
+    genJetSrc = cms.InputTag("ak7GenJets")
+)
+process.ak7GenJetSpectrum_n10_p10 = process.ak3GenJetSpectrum_n10_p10.clone(
+    genJetSrc = cms.InputTag("ak7GenJets")
+)
+process.ak7GenJetSpectrum_n22_n12 = process.ak3GenJetSpectrum_n22_n12.clone(
+    genJetSrc = cms.InputTag("ak7GenJets")
+)
+process.ak7GenJetSpectrum_n12_n07 = process.ak3GenJetSpectrum_n12_n07.clone(
+    genJetSrc = cms.InputTag("ak7GenJets")
+)
+process.ak7GenJetSpectrum_n07_n03 = process.ak3GenJetSpectrum_n07_n03.clone(
+    genJetSrc = cms.InputTag("ak7GenJets")
+)
+process.ak7GenJetSpectrum_p03_p07 = process.ak3GenJetSpectrum_p03_p07.clone(
+    genJetSrc = cms.InputTag("ak7GenJets")
+)
+process.ak7GenJetSpectrum_p07_p12 = process.ak3GenJetSpectrum_p07_p12.clone(
+    genJetSrc = cms.InputTag("ak7GenJets")
+)
+process.ak7GenJetSpectrum_p12_p22 = process.ak3GenJetSpectrum_p12_p22.clone(
+    genJetSrc = cms.InputTag("ak7GenJets")
+)
+
+
+
+process.ak5GenJetSpectrum_QCD10001_00_05 = process.ak3GenJetSpectrum_n10_p10.clone(
+    genJetSrc = cms.InputTag("ak5GenJets"),
+    genParticleSrc = cms.InputTag("genParticles"),
+    jetsByAbsRapidity = cms.bool(True),
+    etaMin = cms.double(0.0),
+    etaMax = cms.double(0.5),
+    jetRadius = cms.double(0.5),
+    ptBins = cms.vdouble( 18,21,24,28,32,37,43,49,56,64,74,84,97,114,133,153,174,196,220,245,272,300,330,362,395,430,468,507,548,592,638,686,737,846,1684)
+)
+
+process.ak5GenJetSpectrum_QCD10001_05_10 = process.ak3GenJetSpectrum_n10_p10.clone(
+    genJetSrc = cms.InputTag("ak5GenJets"),
+    genParticleSrc = cms.InputTag("genParticles"),
+    jetsByAbsRapidity = cms.bool(True),
+    etaMin = cms.double(0.5),
+    etaMax = cms.double(1.0),
+    jetRadius = cms.double(0.5),    
+    ptBins = cms.vdouble( 18,21,24,28,32,37,43,49,56,64,74,84,97,114,133,153,174,196,220,245,272,300,330,362,395,430,468,507,548,592,638,686,790,1684)
+)
+
+process.ak5GenJetSpectrum_QCD10001_10_15 = process.ak3GenJetSpectrum_n10_p10.clone(
+    genJetSrc = cms.InputTag("ak5GenJets"),
+    genParticleSrc = cms.InputTag("genParticles"),
+    jetsByAbsRapidity = cms.bool(True),
+    etaMin = cms.double(1.0),
+    etaMax = cms.double(1.5),
+    jetRadius = cms.double(0.5),    
+    ptBins = cms.vdouble( 18,21,24,28,32,37,43,49,56,64,74,84,97,114,133,153,174,196,220,245,272,300,330,362,395,430,468,507,548,592,638,686,1410 )
+)
+
+process.ak5GenJetSpectrum_QCD10001_15_20 = process.ak3GenJetSpectrum_n10_p10.clone(
+    genJetSrc = cms.InputTag("ak5GenJets"),
+    genParticleSrc = cms.InputTag("genParticles"),
+    jetsByAbsRapidity = cms.bool(True),
+    etaMin = cms.double(1.5),
+    etaMax = cms.double(2.0),
+    jetRadius = cms.double(0.5),    
+    ptBins = cms.vdouble( 18,21,24,28,32,37,43,49,56,64,74,84,97,114,133,153,174,196,220,245,272,300,330,362,395,430,468,507,548,1032 )
+)
+
+process.ak5GenJetSpectrum_QCD10001_20_25 = process.ak3GenJetSpectrum_n10_p10.clone(
+    genJetSrc = cms.InputTag("ak5GenJets"),
+    genParticleSrc = cms.InputTag("genParticles"),
+    jetsByAbsRapidity = cms.bool(True),
+    etaMin = cms.double(2.0),
+    etaMax = cms.double(2.5),
+    jetRadius = cms.double(0.5),    
+    ptBins = cms.vdouble( 18,21,24,28,32,37,43,49,56,64,74,84,97,114,133,153,174,196,220,245,272,300,330,362,395,430,737 )
+)
+
+process.ak5GenJetSpectrum_QCD10001_25_30 = process.ak3GenJetSpectrum_n10_p10.clone(
+    genJetSrc = cms.InputTag("ak5GenJets"),
+    genParticleSrc = cms.InputTag("genParticles"),
+    jetsByAbsRapidity = cms.bool(True),
+    etaMin = cms.double(2.5),
+    etaMax = cms.double(3.0),
+    jetRadius = cms.double(0.5),    
+    ptBins = cms.vdouble( 18,21,24,28,32,37,43,49,56,64,74,84,97,114,133,153,174,196,220,245,272,300,468 )
+)
+
+
+process.ak3GenJetSpectrum_QCD10001_00_05 = process.ak5GenJetSpectrum_QCD10001_00_05.clone(
+    genJetSrc = cms.InputTag("ak3GenJets")
+)
+process.ak3GenJetSpectrum_QCD10001_05_10 = process.ak5GenJetSpectrum_QCD10001_05_10.clone(
+    genJetSrc = cms.InputTag("ak3GenJets")
+)
+process.ak3GenJetSpectrum_QCD10001_10_15 = process.ak5GenJetSpectrum_QCD10001_10_15.clone(
+    genJetSrc = cms.InputTag("ak3GenJets")
+)
+process.ak3GenJetSpectrum_QCD10001_15_20 = process.ak5GenJetSpectrum_QCD10001_15_20.clone(
+    genJetSrc = cms.InputTag("ak3GenJets")
+)
+process.ak3GenJetSpectrum_QCD10001_20_25 = process.ak5GenJetSpectrum_QCD10001_20_25.clone(
+    genJetSrc = cms.InputTag("ak3GenJets")
+)
+process.ak3GenJetSpectrum_QCD10001_25_30 = process.ak5GenJetSpectrum_QCD10001_25_30.clone(
+    genJetSrc = cms.InputTag("ak3GenJets")
+)
+
+
+process.ak4GenJetSpectrum_QCD10001_00_05 = process.ak5GenJetSpectrum_QCD10001_00_05.clone(
+    genJetSrc = cms.InputTag("ak4GenJets")
+)
+process.ak4GenJetSpectrum_QCD10001_05_10 = process.ak5GenJetSpectrum_QCD10001_05_10.clone(
+    genJetSrc = cms.InputTag("ak4GenJets")
+)
+process.ak4GenJetSpectrum_QCD10001_10_15 = process.ak5GenJetSpectrum_QCD10001_10_15.clone(
+    genJetSrc = cms.InputTag("ak4GenJets")
+)
+process.ak4GenJetSpectrum_QCD10001_15_20 = process.ak5GenJetSpectrum_QCD10001_15_20.clone(
+    genJetSrc = cms.InputTag("ak4GenJets")
+)
+process.ak4GenJetSpectrum_QCD10001_20_25 = process.ak5GenJetSpectrum_QCD10001_20_25.clone(
+    genJetSrc = cms.InputTag("ak4GenJets")
+)
+process.ak4GenJetSpectrum_QCD10001_25_30 = process.ak5GenJetSpectrum_QCD10001_25_30.clone(
+    genJetSrc = cms.InputTag("ak4GenJets")
+)
+
+process.ak7GenJetSpectrum_QCD10001_00_05 = process.ak5GenJetSpectrum_QCD10001_00_05.clone(
+    genJetSrc = cms.InputTag("ak7GenJets")
+)
+process.ak7GenJetSpectrum_QCD10001_05_10 = process.ak5GenJetSpectrum_QCD10001_05_10.clone(
+    genJetSrc = cms.InputTag("ak7GenJets")
+)
+process.ak7GenJetSpectrum_QCD10001_10_15 = process.ak5GenJetSpectrum_QCD10001_10_15.clone(
+    genJetSrc = cms.InputTag("ak7GenJets")
+)
+process.ak7GenJetSpectrum_QCD10001_15_20 = process.ak5GenJetSpectrum_QCD10001_15_20.clone(
+    genJetSrc = cms.InputTag("ak7GenJets")
+)
+process.ak7GenJetSpectrum_QCD10001_20_25 = process.ak5GenJetSpectrum_QCD10001_20_25.clone(
+    genJetSrc = cms.InputTag("ak7GenJets")
+)
+process.ak7GenJetSpectrum_QCD10001_25_30 = process.ak5GenJetSpectrum_QCD10001_25_30.clone(
+    genJetSrc = cms.InputTag("ak7GenJets")
+)
+
+
+process.ak7GenJetSpectrum_QCD11004_00_05 = process.ak3GenJetSpectrum_n10_p10.clone(
+    genJetSrc = cms.InputTag("ak7GenJets"),
+    genParticleSrc = cms.InputTag("genParticles"),
+    jetsByAbsRapidity = cms.bool(True),
+    etaMin = cms.double(0.0),
+    etaMax = cms.double(0.5),
+    jetRadius = cms.double(0.7),
+    ptBins = cms.vdouble( 114,133,153,174,196,220,245,272,300,330,362,395,430,468,507,548,592,638,686,737,790,846,905,967,1032,1101,1172,1248,1327,1410,1497,1588,1784,2116 )
+)
+
+process.ak7GenJetSpectrum_QCD11004_05_10 = process.ak3GenJetSpectrum_n10_p10.clone(
+    genJetSrc = cms.InputTag("ak7GenJets"),
+    genParticleSrc = cms.InputTag("genParticles"),
+    jetsByAbsRapidity = cms.bool(True),
+    etaMin = cms.double(0.5),
+    etaMax = cms.double(1.0),
+    jetRadius = cms.double(0.7),
+    ptBins = cms.vdouble( 114,133,153,174,196,220,245,272,300,330,362,395,430,468,507,548,592,638,686,737,790,846,905,967,1032,1101,1172,1248,1327,1410,1784 )
+)
+
+process.ak7GenJetSpectrum_QCD11004_10_15 = process.ak3GenJetSpectrum_n10_p10.clone(
+    genJetSrc = cms.InputTag("ak7GenJets"),
+    genParticleSrc = cms.InputTag("genParticles"),
+    jetsByAbsRapidity = cms.bool(True),
+    etaMin = cms.double(1.0),
+    etaMax = cms.double(1.5),
+    jetRadius = cms.double(0.7),    
+    ptBins = cms.vdouble( 114,133,153,174,196,220,245,272,300,330,362,395,430,468,507,548,592,638,686,737,790,846,905,967,1032,1101,1172,1684 )
+)
+
+process.ak7GenJetSpectrum_QCD11004_15_20 = process.ak3GenJetSpectrum_n10_p10.clone(
+    genJetSrc = cms.InputTag("ak7GenJets"),
+    genParticleSrc = cms.InputTag("genParticles"),
+    jetsByAbsRapidity = cms.bool(True),
+    etaMin = cms.double(1.5),
+    etaMax = cms.double(2.0),
+    jetRadius = cms.double(0.7),    
+    ptBins = cms.vdouble( 114,133,153,174,196,220,245,272,300,330,362,395,430,468,507,548,592,638,686,737,790,846,905,967,1248  )
+)
+
+process.ak7GenJetSpectrum_QCD11004_20_25 = process.ak3GenJetSpectrum_n10_p10.clone(
+    genJetSrc = cms.InputTag("ak7GenJets"),
+    genParticleSrc = cms.InputTag("genParticles"),
+    jetsByAbsRapidity = cms.bool(True),
+    etaMin = cms.double(2.0),
+    etaMax = cms.double(2.5),
+    jetRadius = cms.double(0.7),
+    ptBins = cms.vdouble( 114,133,153,174,196,220,245,272,300,330,362,395,430,468,507,548,592,638,686,905  )
+)
+
+process.ak3GenJetSpectrum_QCD11004_00_05 = process.ak7GenJetSpectrum_QCD11004_00_05.clone(
+    genJetSrc = cms.InputTag("ak3GenJets")
+)
+process.ak3GenJetSpectrum_QCD11004_05_10 = process.ak7GenJetSpectrum_QCD11004_05_10.clone(
+    genJetSrc = cms.InputTag("ak3GenJets")
+)
+process.ak3GenJetSpectrum_QCD11004_10_15 = process.ak7GenJetSpectrum_QCD11004_10_15.clone(
+    genJetSrc = cms.InputTag("ak3GenJets")
+)
+process.ak3GenJetSpectrum_QCD11004_15_20 = process.ak7GenJetSpectrum_QCD11004_15_20.clone(
+    genJetSrc = cms.InputTag("ak3GenJets")
+)
+process.ak3GenJetSpectrum_QCD11004_20_25 = process.ak7GenJetSpectrum_QCD11004_20_25.clone(
+    genJetSrc = cms.InputTag("ak3GenJets")
+)
+
 process.ana_step = cms.Path(
-    process.ak3GenJetSpectrum * 
-    process.ak3GenJetSpectrum_n22_n12 *
-    process.ak3GenJetSpectrum_n12_n07 *
-    process.ak3GenJetSpectrum_n07_n03 *
-    process.ak3GenJetSpectrum_n03_p03 *
-    process.ak3GenJetSpectrum_p03_p07 *
-    process.ak3GenJetSpectrum_p07_p12 *
-    process.ak3GenJetSpectrum_p12_p22 
+    process.ak3GenJetSpectrum
+#    process.ak3GenJetSpectrum_n10_p10 * 
+#    process.ak3GenJetSpectrum_n22_n12 *
+#    process.ak3GenJetSpectrum_n12_n07 *
+#    process.ak3GenJetSpectrum_n07_n03 *
+#    process.ak3GenJetSpectrum_n03_p03 *
+#    process.ak3GenJetSpectrum_p03_p07 *
+#    process.ak3GenJetSpectrum_p07_p12 *
+#    process.ak3GenJetSpectrum_p12_p22 *
+#    process.ak4GenJetSpectrum_n10_p10 *
+#    process.ak4GenJetSpectrum_n22_n12 *
+#    process.ak4GenJetSpectrum_n12_n07 *
+#    process.ak4GenJetSpectrum_n07_n03 *
+#    process.ak4GenJetSpectrum_n03_p03 *
+#    process.ak4GenJetSpectrum_p03_p07 *
+#    process.ak4GenJetSpectrum_p07_p12 *
+#    process.ak4GenJetSpectrum_p12_p22 *
+#    process.ak5GenJetSpectrum_n10_p10 *
+#    process.ak5GenJetSpectrum_n22_n12 *
+#    process.ak5GenJetSpectrum_n12_n07 *
+#    process.ak5GenJetSpectrum_n07_n03 *
+#    process.ak5GenJetSpectrum_n03_p03 *
+#    process.ak5GenJetSpectrum_p03_p07 *
+#    process.ak5GenJetSpectrum_p07_p12 *
+#    process.ak5GenJetSpectrum_p12_p22 *
+#    process.ak7GenJetSpectrum_n10_p10 *
+#    process.ak7GenJetSpectrum_n22_n12 *
+#    process.ak7GenJetSpectrum_n12_n07 *
+#    process.ak7GenJetSpectrum_n07_n03 *
+#    process.ak7GenJetSpectrum_n03_p03 *
+#    process.ak7GenJetSpectrum_p03_p07 *
+#    process.ak7GenJetSpectrum_p07_p12 *
+#    process.ak7GenJetSpectrum_p12_p22 *
+#    process.ak5GenJetSpectrum_QCD10001_00_05 *
+#    process.ak5GenJetSpectrum_QCD10001_05_10 *
+#    process.ak5GenJetSpectrum_QCD10001_10_15 *
+#    process.ak5GenJetSpectrum_QCD10001_15_20 *
+#    process.ak5GenJetSpectrum_QCD10001_20_25 *
+#    process.ak5GenJetSpectrum_QCD10001_25_30 *
+#    process.ak3GenJetSpectrum_QCD10001_00_05 *
+#    process.ak3GenJetSpectrum_QCD10001_05_10 *
+#    process.ak3GenJetSpectrum_QCD10001_10_15 *
+#    process.ak3GenJetSpectrum_QCD10001_15_20 *
+#    process.ak3GenJetSpectrum_QCD10001_20_25 *
+#    process.ak3GenJetSpectrum_QCD10001_25_30 *
+#    process.ak4GenJetSpectrum_QCD10001_00_05 *
+#    process.ak4GenJetSpectrum_QCD10001_05_10 *
+#    process.ak4GenJetSpectrum_QCD10001_10_15 *
+#    process.ak4GenJetSpectrum_QCD10001_15_20 *
+#    process.ak4GenJetSpectrum_QCD10001_20_25 *
+#    process.ak4GenJetSpectrum_QCD10001_25_30 *
+#    process.ak7GenJetSpectrum_QCD10001_00_05 *
+#    process.ak7GenJetSpectrum_QCD10001_05_10 *
+#    process.ak7GenJetSpectrum_QCD10001_10_15 *
+#    process.ak7GenJetSpectrum_QCD10001_15_20 *
+#    process.ak7GenJetSpectrum_QCD10001_20_25 *
+#    process.ak7GenJetSpectrum_QCD10001_25_30 *
+#    process.ak7GenJetSpectrum_QCD11004_00_05 *
+#    process.ak7GenJetSpectrum_QCD11004_05_10 *
+#    process.ak7GenJetSpectrum_QCD11004_10_15 *
+#    process.ak7GenJetSpectrum_QCD11004_15_20 *
+#    process.ak7GenJetSpectrum_QCD11004_20_25 *
+#    process.ak3GenJetSpectrum_QCD11004_00_05 *
+#    process.ak3GenJetSpectrum_QCD11004_05_10 *
+#    process.ak3GenJetSpectrum_QCD11004_10_15 *
+#    process.ak3GenJetSpectrum_QCD11004_15_20 *
+#    process.ak3GenJetSpectrum_QCD11004_20_25 
 )
 
 process.schedule = cms.Schedule(process.gen_step,
