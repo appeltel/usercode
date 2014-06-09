@@ -24,13 +24,13 @@ options.register('sqrtS',
                  "Center-of-mass energy")
 
 options.register('ptHatLow',
-                 50,
+                 120,
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.int,
                  "Minimum pt-hat")
 
 options.register('ptHatHigh',
-                 80,
+                 160,
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.int,
                  "Maximum pt-hat")
@@ -72,12 +72,13 @@ randSvc.populate()
 process.MessageLogger.cerr.FwkReport.reportEvery = 1000
 
 # ============= Pythia setting  ================================
-from Configuration.Generator.PythiaUEZ2Settings_cfi import *
+#from Configuration.Generator.PythiaUEZ2Settings_cfi import *
 #from Configuration.Generator.PythiaUEZ2starSettings_cfi import *
-#from PythiaUEAMBT2Settings_cfi import *
+from PythiaUEAMBT2Settings_cfi import *
 
 process.generator = cms.EDFilter("Pythia6GeneratorFilter",
     pythiaPylistVerbosity = cms.untracked.int32(0),
+    PNInitialState = cms.untracked.bool(True),
     filterEfficiency = cms.untracked.double(1.0),
     pythiaHepMCVerbosity = cms.untracked.bool(True),
     comEnergy = cms.double(5020.0),
@@ -121,6 +122,9 @@ process.ak3GenJetSpectrum = cms.EDAnalyzer('GenJetCrossCheckAnalyzer',
     genJetSrc = cms.InputTag("ak3GenJets"),
     genParticleSrc = cms.InputTag("genParticles"),
     doCMatrix = cms.bool(True),
+    doFlavor = cms.bool(False),
+    flavorSrc = cms.InputTag("flavourByRef"),
+    flavorId = cms.int32(21),    
     jetsByAbsRapidity = cms.bool(False),
     etaMin = cms.double(-1.0),
     etaMax = cms.double(1.0),
@@ -128,7 +132,9 @@ process.ak3GenJetSpectrum = cms.EDAnalyzer('GenJetCrossCheckAnalyzer',
     pthatMin = cms.double(options.ptHatLow),
     pthatMax = cms.double(options.ptHatHigh),
     ptBins = cms.vdouble( 3, 4, 5, 7, 9, 12, 15, 18, 22, 27, 33, 39, 47, 55, 64, 74, 84, 97, 114, 133, 153, 174, 196, 220, 245, 272, 300, 429, 692, 1000 ),
-    pythiaProcess = cms.string(options.processType )    
+    pythiaProcess = cms.string(options.processType ),
+    dijetEtaBins = cms.vdouble( -3.01, -2.63333, -2.07, -1.78833, -1.50667, -1.225, -0.943333, -0.661667, -0.38, -0.0983333, 0.183333, 0.465, 0.746667, 1.02833, 1.31, 1.59167, 1.87333, 2.43667, 3.0),
+    dijetEtaWeights = cms.vdouble( 1, 0.772085, 0.701301, 0.753585, 0.813741, 0.882849, 0.943137, 0.977332, 0.993655, 1.0375, 1.04713, 1.04826, 1.05517, 1.05983, 1.0723, 1.06945, 1.01587, 1.41731 )    
 )
 
 process.ak3GenJetSpectrum_n10_p10 = process.ak3GenJetSpectrum.clone(
@@ -170,6 +176,36 @@ process.ak3GenJetSpectrum_p03_p07 = process.ak3GenJetSpectrum_n10_p10.clone(
 process.ak3GenJetSpectrum_n03_p03 = process.ak3GenJetSpectrum_n10_p10.clone(
     etaMin = cms.double(-0.3),
     etaMax = cms.double(0.3)
+)
+
+process.ak3GenJetSpectrum_n18_n13 = process.ak3GenJetSpectrum_n10_p10.clone(
+    etaMin = cms.double(-1.8),
+    etaMax = cms.double(-1.3)
+)
+
+process.ak3GenJetSpectrum_n13_n08 = process.ak3GenJetSpectrum_n10_p10.clone(
+    etaMin = cms.double(-1.3),
+    etaMax = cms.double(-0.8)
+)
+
+process.ak3GenJetSpectrum_n08_n03 = process.ak3GenJetSpectrum_n10_p10.clone(
+    etaMin = cms.double(-0.8),
+    etaMax = cms.double(-0.3)
+)
+
+process.ak3GenJetSpectrum_p03_p08 = process.ak3GenJetSpectrum_n10_p10.clone(
+    etaMin = cms.double(0.3),
+    etaMax = cms.double(0.8)
+)
+
+process.ak3GenJetSpectrum_p08_p13 = process.ak3GenJetSpectrum_n10_p10.clone(
+    etaMin = cms.double(0.8),
+    etaMax = cms.double(0.13)
+)
+
+process.ak3GenJetSpectrum_p13_p18 = process.ak3GenJetSpectrum_n10_p10.clone(
+    etaMin = cms.double(1.3),
+    etaMax = cms.double(1.8)
 )
 
 process.ak4GenJetSpectrum_n03_p03 = process.ak3GenJetSpectrum_n03_p03.clone(
@@ -437,15 +473,21 @@ process.ak3GenJetSpectrum_QCD11004_20_25 = process.ak7GenJetSpectrum_QCD11004_20
 )
 
 process.ana_step = cms.Path(
-    process.ak3GenJetSpectrum
-#    process.ak3GenJetSpectrum_n10_p10 * 
-#    process.ak3GenJetSpectrum_n22_n12 *
-#    process.ak3GenJetSpectrum_n12_n07 *
-#    process.ak3GenJetSpectrum_n07_n03 *
-#    process.ak3GenJetSpectrum_n03_p03 *
-#    process.ak3GenJetSpectrum_p03_p07 *
-#    process.ak3GenJetSpectrum_p07_p12 *
-#    process.ak3GenJetSpectrum_p12_p22 *
+#    process.ak3GenJetSpectrum
+    process.ak3GenJetSpectrum_n10_p10 * 
+    process.ak3GenJetSpectrum_n22_n12 *
+    process.ak3GenJetSpectrum_n12_n07 *
+    process.ak3GenJetSpectrum_n07_n03 *
+    process.ak3GenJetSpectrum_n03_p03 *
+    process.ak3GenJetSpectrum_p03_p07 *
+    process.ak3GenJetSpectrum_p07_p12 *
+    process.ak3GenJetSpectrum_p12_p22 *
+    process.ak3GenJetSpectrum_n18_n13 *
+    process.ak3GenJetSpectrum_n13_n08 *
+    process.ak3GenJetSpectrum_n08_n03 *
+    process.ak3GenJetSpectrum_p03_p08 *
+    process.ak3GenJetSpectrum_p08_p13 *
+    process.ak3GenJetSpectrum_p13_p18 
 #    process.ak4GenJetSpectrum_n10_p10 *
 #    process.ak4GenJetSpectrum_n22_n12 *
 #    process.ak4GenJetSpectrum_n12_n07 *
