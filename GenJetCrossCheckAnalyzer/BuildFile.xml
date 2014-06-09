@@ -6,6 +6,7 @@
 <use name="FWCore/ServiceRegistry"/>
 <use name="CommonTools/UtilAlgos"/>
 <use name="SimDataFormats/GeneratorProducts"/>
+<use name="SimDataFormats/JetMatching"/>
 <use name="DataFormats/HepMCCandidate"/>
 <use name="SimGeneral/HepPDTRecord"/>
 <use name="hepmc"/>
