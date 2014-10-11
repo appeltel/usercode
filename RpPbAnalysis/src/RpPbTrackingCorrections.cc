@@ -25,7 +25,7 @@
 #include "FWCore/Framework/interface/MakerMacros.h"
 #include "FWCore/ServiceRegistry/interface/Service.h"
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
-#include "DataFormats/HeavyIonEvent/interface/CentralityProvider.h"
+#include "RecoHI/HiCentralityAlgos/interface/CentralityProvider.h"
 #include <DataFormats/VertexReco/interface/Vertex.h>
 #include <DataFormats/VertexReco/interface/VertexFwd.h>
 #include <DataFormats/TrackReco/interface/Track.h>
@@ -524,7 +524,7 @@ RpPbTrackingCorrections::analyze(const edm::Event& iEvent, const edm::EventSetup
          rt = (std::vector<std::pair<edm::RefToBase<reco::Track>, double> >) hltSimRecColl[tpr];
          for (std::vector<std::pair<edm::RefToBase<reco::Track>, double> >::const_iterator rtit = rt.begin(); rtit != rt.end(); ++rtit)
          {
-           const reco::Track* tmtr = rtit->first.get();
+           //const reco::Track* tmtr = rtit->first.get();
            nrecHLT++;
          }
        }

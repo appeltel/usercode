@@ -30,4 +30,5 @@
 <use name="SimTracker/TrackHistory"/>
 <use name="SimDataFormats/GeneratorProducts"/>
 <use name="SimGeneral/HepPDTRecord"/>
+<use name="RecoHI/HiCentralityAlgos"/>
 <flags EDM_PLUGIN="1"/>

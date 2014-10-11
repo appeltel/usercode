@@ -22,7 +22,7 @@
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
 #include <DataFormats/HepMCCandidate/interface/GenParticle.h>
 #include <DataFormats/HepMCCandidate/interface/GenParticleFwd.h>
-#include "DataFormats/HeavyIonEvent/interface/CentralityProvider.h"
+#include "RecoHI/HiCentralityAlgos/interface/CentralityProvider.h"
 #include <DataFormats/VertexReco/interface/Vertex.h>
 #include <DataFormats/VertexReco/interface/VertexFwd.h>
 
